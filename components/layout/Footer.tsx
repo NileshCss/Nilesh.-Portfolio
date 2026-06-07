@@ -28,7 +28,6 @@ function XIcon({ size = 16 }: { size?: number }) {
 }
 
 const quickLinks = ["About", "Experience", "Projects", "Skills", "Contact"];
-const services = ["Full Stack Development", "Java Development", "Web Development", "SaaS Development", "AI Integration"];
 const resources = ["Resume", "Case Studies", "Documentation"];
 
 export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInfo }) {
@@ -44,8 +43,8 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
   return (
     <footer className="bg-slate-50 border-t border-slate-200">
       <div className="max-w-[1200px] mx-auto px-6 pt-16 pb-0">
-        {/* 5-column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr_1fr_1fr_1.4fr] gap-10 mb-10">
+        {/* 4-column grid */}
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1.5fr] gap-10 mb-10">
           {/* Col 1 — Brand */}
           <div>
             <div className="text-[1.25rem] font-black text-slate-900 mb-3">
@@ -89,21 +88,7 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
             </ul>
           </div>
 
-          {/* Col 3 — Services */}
-          <div>
-            <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
-              Services
-            </h4>
-            <ul className="space-y-2">
-              {services.map((s) => (
-                <li key={s}>
-                  <span className="text-[0.85rem] text-slate-500">{s}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Col 4 — Resources */}
+          {/* Col 3 — Resources */}
           <div>
             <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
               Resources
@@ -117,7 +102,7 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
             </ul>
           </div>
 
-          {/* Col 5 — Let's Connect */}
+          {/* Col 4 — Let's Connect */}
           <div>
             <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
               Let&apos;s Connect
