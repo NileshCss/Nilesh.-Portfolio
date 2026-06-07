@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { personal } from "@/data/personal";
 import type { PersonalInfo } from "@/types";
-import { Mail, Download } from "lucide-react";
+import { Mail, Download, Sun, Moon, Lock } from "lucide-react";
 
 function GitHubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -32,6 +35,30 @@ const resources = ["Resume", "Case Studies", "Documentation"];
 
 export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInfo }) {
   const year = new Date().getFullYear();
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const initialTheme = savedTheme || systemTheme;
+    setTheme(initialTheme);
+    if (initialTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   const socials = [
     ...(personalInfo.linkedin ? [{ icon: LinkedInIcon, href: personalInfo.linkedin, label: "LinkedIn" }] : []),
@@ -124,10 +151,42 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-slate-200 py-7 flex flex-wrap items-center justify-between gap-3">
+        <div className="border-t border-slate-200 py-7 flex flex-wrap items-center justify-between gap-4">
           <p className="text-[0.8rem] text-slate-400">
             &copy; {year} {personalInfo.name}. All Rights Reserved.
           </p>
+
+          {/* Utilities: Theme Toggle & Admin Panel */}
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all duration-200 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm cursor-pointer"
+              title="Toggle Theme"
+            >
+              {theme === "light" ? (
+                <>
+                  <Moon size={13} className="text-slate-500" />
+                  <span>Dark Mode</span>
+                </>
+              ) : (
+                <>
+                  <Sun size={13} className="text-amber-500" />
+                  <span>Light Mode</span>
+                </>
+              )}
+            </button>
+
+            {/* Admin Panel Link */}
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all duration-200 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm"
+            >
+              <Lock size={12} className="text-slate-500" />
+              <span>Admin Panel</span>
+            </Link>
+          </div>
+
           {personalInfo.openToWork && (
             <div className="flex items-center gap-2 text-[0.8rem] font-semibold text-emerald-500">
               <span className="relative flex h-2 w-2">
