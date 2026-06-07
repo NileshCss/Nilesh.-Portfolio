@@ -1,0 +1,10 @@
+RESUME PLACEHOLDER
+
+Replace this file with your actual resume PDF.
+
+Steps:
+1. Export your resume as a PDF
+2. Rename it to: resume.pdf
+3. Place it in the /public directory (replacing this file)
+
+The resume download button in the navbar and contact section will automatically link to /resume.pdf

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Nilesh Kumar Singh – N logo mark, dark theme">
+  <title>Nilesh. – N Mark (Dark)</title>
+  <!-- Squircle container -->
+  <rect width="512" height="512" rx="112" ry="112" fill="#0F172A"/>
+  <defs>
+    <!-- Clip path to keep diagonal inside N bounding box (110,90) to (402,422) -->
+    <clipPath id="n-bounds">
+      <rect x="110" y="90" width="292" height="332"/>
+    </clipPath>
+  </defs>
+  <!-- N letterform -->
+  <g>
+    <!-- Left vertical bar -->
+    <rect x="110" y="90" width="48" height="332" fill="#FFFFFF"/>
+    <!-- Right vertical bar -->
+    <rect x="354" y="90" width="48" height="332" fill="#FFFFFF"/>
+    <!-- Diagonal stroke, clipped to bounds -->
+    <polygon points="128,74 420,406 384,438 92,106" fill="#FFFFFF" clip-path="url(#n-bounds)"/>
+  </g>
+  <!-- Blue accent dot – lower-right of N, r=36 at 512px -->
+  <circle cx="435" cy="400" r="36" fill="#3B82F6"/>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Nilesh Kumar Singh – Favicon 16x16">
+  <title>Nilesh. – Favicon 16x16</title>
+  <!-- Squircle container (radius 2px) -->
+  <rect width="16" height="16" rx="2" ry="2" fill="#0F172A"/>
+  <defs>
+    <!-- Clip path to keep diagonal inside N bounding box -->
+    <clipPath id="n-bounds-16">
+      <rect x="3.4375" y="2.8125" width="9.125" height="10.375"/>
+    </clipPath>
+  </defs>
+  <!-- N letterform -->
+  <g>
+    <!-- Left vertical bar -->
+    <rect x="3.4375" y="2.8125" width="1.5" height="10.375" fill="#FFFFFF"/>
+    <!-- Right vertical bar -->
+    <rect x="11.0625" y="2.8125" width="1.5" height="10.375" fill="#FFFFFF"/>
+    <!-- Diagonal stroke, clipped to bounds -->
+    <polygon points="4,2.3125 13.125,12.6875 12,13.6875 2.875,3.3125" fill="#FFFFFF" clip-path="url(#n-bounds-16)"/>
+  </g>
+  <!-- Prominent blue accent dot (r=2px, cx=13.6, cy=12.5) -->
+  <circle cx="13.6" cy="12.5" r="2" fill="#3B82F6"/>
+</svg>
