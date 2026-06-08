@@ -95,7 +95,7 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
   };
 
   return (
-    <section id="contact" className="py-[72px] bg-white border-t border-slate-200">
+    <section id="contact" className="py-[72px] bg-white dark:bg-[#0B1120] border-t border-slate-200 dark:border-slate-800/50 transition-colors">
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial="hidden"
@@ -116,22 +116,22 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
             {/* Left — Social links + availability */}
             <motion.div variants={item} className="space-y-8">
               {/* Open to Work */}
-              <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50">
+              <div className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20">
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 dark:bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 dark:bg-emerald-400" />
                   </span>
-                  <span className="text-sm font-semibold text-emerald-600">Open to Work</span>
+                  <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Open to Work</span>
                 </div>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                   Actively looking for Full Stack Java Developer, Software Engineer, and Product Engineering roles at product-based companies.
                 </p>
               </div>
 
               {/* Social links */}
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
                   Find me on
                 </p>
                 <div className="space-y-3">
@@ -141,16 +141,16 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                       href={href}
                       target={href.startsWith("mailto") ? undefined : "_blank"}
                       rel="noopener noreferrer"
-                      className="group flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-600 hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-200"
+                      className="group flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-blue-600 dark:hover:border-blue-500 hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] dark:hover:shadow-[0_4px_24px_rgba(59,130,246,0.1)] transition-all duration-200"
                     >
-                      <span className="p-2 rounded-lg bg-slate-50 border border-slate-200 group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors">
-                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors flex">
+                      <span className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-blue-200 dark:group-hover:border-blue-900/50 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
+                        <span className="text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex">
                           <Icon size={15} />
                         </span>
                       </span>
                       <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{label}</p>
-                        <p className="text-sm text-slate-700 font-medium">{handle}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{label}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{handle}</p>
                       </div>
                     </Link>
                   ))}
@@ -163,9 +163,9 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                   href={personalInfo.resumeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2.5 px-5 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-600 text-sm font-semibold transition-all duration-200"
+                  className="group inline-flex items-center gap-2.5 px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-blue-600 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold transition-all duration-200"
                 >
-                  <Download size={15} className="group-hover:text-blue-600 transition-colors" />
+                  <Download size={15} className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                   Download Resume
                 </Link>
               )}
@@ -174,17 +174,17 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
             {/* Right — Contact form */}
             <motion.div variants={item}>
               {status === "success" ? (
-                <div className="flex flex-col items-center justify-center h-full text-center gap-4 p-8 rounded-2xl border border-emerald-200 bg-emerald-50">
-                  <CheckCircle2 size={40} className="text-emerald-500" />
+                <div className="flex flex-col items-center justify-center h-full text-center gap-4 p-8 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20">
+                  <CheckCircle2 size={40} className="text-emerald-500 dark:text-emerald-400" />
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 mb-1">Message sent!</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">Message sent!</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       Thanks for reaching out. I&apos;ll get back to you soon.
                     </p>
                   </div>
                   <button
                     onClick={() => setStatus("idle")}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors"
                   >
                     Send another
                   </button>
@@ -193,7 +193,7 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {/* Name */}
                   <div>
-                    <label htmlFor="contact-name" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <label htmlFor="contact-name" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                       Name
                     </label>
                     <input
@@ -201,18 +201,18 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                       {...register("name")}
                       placeholder="Your name"
                       className={cn(
-                        "w-full px-4 py-3 rounded-xl bg-white border text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
-                        errors.name ? "border-red-400" : "border-slate-200"
+                        "w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900/50 border text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors duration-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30",
+                        errors.name ? "border-red-400 dark:border-red-500/50" : "border-slate-200 dark:border-slate-800"
                       )}
                     />
                     {errors.name && (
-                      <p className="mt-1.5 text-xs text-red-500">{errors.name.message}</p>
+                      <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{errors.name.message}</p>
                     )}
                   </div>
 
                   {/* Email */}
                   <div>
-                    <label htmlFor="contact-email" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <label htmlFor="contact-email" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                       Email
                     </label>
                     <input
@@ -221,18 +221,18 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                       {...register("email")}
                       placeholder="your@email.com"
                       className={cn(
-                        "w-full px-4 py-3 rounded-xl bg-white border text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
-                        errors.email ? "border-red-400" : "border-slate-200"
+                        "w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900/50 border text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors duration-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30",
+                        errors.email ? "border-red-400 dark:border-red-500/50" : "border-slate-200 dark:border-slate-800"
                       )}
                     />
                     {errors.email && (
-                      <p className="mt-1.5 text-xs text-red-500">{errors.email.message}</p>
+                      <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
                     )}
                   </div>
 
                   {/* Message */}
                   <div>
-                    <label htmlFor="contact-message" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <label htmlFor="contact-message" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                       Message
                     </label>
                     <textarea
@@ -241,17 +241,17 @@ export function ContactSection({ personalInfo = personal }: { personalInfo?: Per
                       placeholder="Tell me about the role, project, or just say hello..."
                       rows={5}
                       className={cn(
-                        "w-full px-4 py-3 rounded-xl bg-white border text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none",
-                        errors.message ? "border-red-400" : "border-slate-200"
+                        "w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900/50 border text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors duration-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 resize-none",
+                        errors.message ? "border-red-400 dark:border-red-500/50" : "border-slate-200 dark:border-slate-800"
                       )}
                     />
                     {errors.message && (
-                      <p className="mt-1.5 text-xs text-red-500">{errors.message.message}</p>
+                      <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{errors.message.message}</p>
                     )}
                   </div>
 
                   {status === "error" && (
-                    <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg px-4 py-3">
                       <AlertCircle size={15} />
                       Something went wrong. Please email me directly.
                     </div>
