@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, Calendar, Sun, Moon, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Bell, Calendar, Sun, Moon, User, Settings, LogOut, ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 
@@ -29,9 +29,11 @@ const pathLabels: Record<string, { title: string; subtitle: string }> = {
 
 interface AdminHeaderProps {
   userEmail?: string;
+  isMobile?: boolean;
+  onMenuToggle?: () => void;
 }
 
-export function AdminHeader({ userEmail }: AdminHeaderProps) {
+export function AdminHeader({ userEmail, isMobile, onMenuToggle }: AdminHeaderProps) {
   const pathname = usePathname();
   const info = pathLabels[pathname] || { title: "Admin Panel", subtitle: "Portfolio CMS" };
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
@@ -63,7 +65,7 @@ export function AdminHeader({ userEmail }: AdminHeaderProps) {
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center justify-between px-7 border-b"
+      className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-7 border-b"
       style={{
         height: 60,
         background: "var(--admin-header-bg)",
@@ -72,30 +74,57 @@ export function AdminHeader({ userEmail }: AdminHeaderProps) {
       }}
     >
       {/* ── Left: Page title + subtitle ── */}
-      <div>
-        <h1
-          style={{
-            fontFamily: "var(--font-outfit, sans-serif)",
-            fontWeight: 800,
-            fontSize: "1.05rem",
-            color: "var(--text-primary)",
-            margin: 0,
-            lineHeight: 1.2,
-          }}
-        >
-          {info.title}
-        </h1>
-        <p
-          style={{
-            fontFamily: "var(--font-outfit, sans-serif)",
-            fontWeight: 400,
-            fontSize: "0.8rem",
-            color: "var(--text-muted)",
-            margin: 0,
-          }}
-        >
-          {info.subtitle}
-        </p>
+      <div className="flex items-center gap-3">
+        {isMobile && (
+          <button
+            onClick={onMenuToggle}
+            title="Open menu"
+            aria-label="Open menu"
+            style={{
+              width: 36,
+              height: 36,
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border-default)",
+              borderRadius: 8,
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+          >
+            <Menu size={18} />
+          </button>
+        )}
+        <div>
+          <h1
+            style={{
+              fontFamily: "var(--font-outfit, sans-serif)",
+              fontWeight: 800,
+              fontSize: "1.05rem",
+              color: "var(--text-primary)",
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {info.title}
+          </h1>
+          <p
+            style={{
+              fontFamily: "var(--font-outfit, sans-serif)",
+              fontWeight: 400,
+              fontSize: "0.8rem",
+              color: "var(--text-muted)",
+              margin: 0,
+            }}
+          >
+            {info.subtitle}
+          </p>
+        </div>
       </div>
 
       {/* ── Right: Actions ── */}

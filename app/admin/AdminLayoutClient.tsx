@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [userEmail, setUserEmail] = useState<string>();
   const [unreadCount, setUnreadCount] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -18,14 +19,27 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const { setTheme } = useTheme();
 
-  // Set admin default theme to dark on first mount
+  // Set admin default theme to dark on first mount & handle responsive layout
   useEffect(() => {
     setMounted(true);
-    // Only set to dark if no preference stored yet
     const stored = localStorage.getItem("theme");
     if (!stored) {
       setTheme("dark");
     }
+
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setCollapsed(true); // Close by default on mobile
+      } else {
+        setCollapsed(false); // Open by default on desktop
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [setTheme]);
 
   useEffect(() => {
@@ -97,22 +111,48 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="min-h-screen font-sans"
+      className="min-h-screen font-sans relative overflow-x-hidden"
       style={{ background: "var(--admin-bg)", color: "var(--text-primary)" }}
     >
-      <Sidebar
-        collapsed={collapsed}
-        onToggle={() => setCollapsed(!collapsed)}
-        onLogout={handleLogout}
-        unreadCount={unreadCount}
-      />
+      {/* Mobile Backdrop Overlay */}
+      {isMobile && !collapsed && (
+        <div
+          onClick={() => setCollapsed(true)}
+          className="fixed inset-0 bg-black/45 z-30 transition-opacity duration-300"
+          style={{ backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
+        />
+      )}
 
-      <div
-        className={cn("relative transition-all duration-300 ease-out min-h-screen")}
-        style={{ marginLeft: collapsed ? 72 : 240 }}
+      {/* Sidebar container */}
+      <div 
+        className={cn(
+          "fixed top-0 bottom-0 left-0 z-40 transition-all duration-300 ease-out",
+          isMobile ? (collapsed ? "-translate-x-full" : "translate-x-0") : ""
+        )}
+        style={{ width: isMobile ? 240 : (collapsed ? 72 : 240) }}
       >
-        <AdminHeader userEmail={userEmail} />
-        <main style={{ padding: "24px 32px" }}>
+        <Sidebar
+          collapsed={isMobile ? false : collapsed}
+          onToggle={() => setCollapsed(!collapsed)}
+          onLogout={handleLogout}
+          unreadCount={unreadCount}
+        />
+      </div>
+
+      {/* Main Container */}
+      <div
+        className="relative transition-all duration-300 ease-out min-h-screen flex flex-col"
+        style={{ 
+          marginLeft: isMobile ? 0 : (collapsed ? 72 : 240),
+          width: isMobile ? "100%" : `calc(100% - ${collapsed ? 72 : 240}px)` 
+        }}
+      >
+        <AdminHeader 
+          userEmail={userEmail} 
+          isMobile={isMobile}
+          onMenuToggle={() => setCollapsed(!collapsed)}
+        />
+        <main style={{ padding: isMobile ? "16px 16px" : "24px 32px", flex: 1 }}>
           {children}
         </main>
       </div>

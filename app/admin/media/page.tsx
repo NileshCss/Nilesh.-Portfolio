@@ -13,36 +13,38 @@ const mockMedia = [
 export default function MediaPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1200 }}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 800, fontSize: "1.5rem", color: "var(--text-primary)" }}>Media Library</h2>
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: 4 }}>124 files · 2.4 GB of 10 GB used</p>
         </div>
-        <button className="flex items-center gap-2 rounded-lg" style={{ padding: "10px 18px", background: "var(--brand-primary)", color: "#fff", border: "none", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+        <button className="flex items-center gap-2 rounded-lg justify-center w-full sm:w-auto" style={{ padding: "10px 18px", background: "var(--brand-primary)", color: "#fff", border: "none", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
           <Upload size={15} /> Upload Files
         </button>
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
           <input placeholder="Search files..." style={{ width: "100%", paddingLeft: 36, paddingRight: 12, paddingTop: 10, paddingBottom: 10, background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", borderRadius: 8, color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontSize: "0.875rem", outline: "none" }} />
         </div>
-        <select style={{ padding: "10px 14px", background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", borderRadius: 8, color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontSize: "0.875rem", outline: "none" }}>
-          <option>All Types</option>
-          <option>Images</option>
-          <option>PDFs</option>
-          <option>Videos</option>
-        </select>
-        <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}>
-          <button style={{ padding: "6px 10px", background: "var(--brand-primary)", borderRadius: 6, border: "none", color: "#fff", cursor: "pointer" }}><Grid size={15} /></button>
-          <button style={{ padding: "6px 10px", background: "transparent", borderRadius: 6, border: "none", color: "var(--text-muted)", cursor: "pointer" }}><List size={15} /></button>
+        <div className="flex gap-3">
+          <select className="flex-1 sm:flex-initial" style={{ padding: "10px 14px", background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", borderRadius: 8, color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontSize: "0.875rem", outline: "none" }}>
+            <option>All Types</option>
+            <option>Images</option>
+            <option>PDFs</option>
+            <option>Videos</option>
+          </select>
+          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}>
+            <button style={{ padding: "6px 10px", background: "var(--brand-primary)", borderRadius: 6, border: "none", color: "#fff", cursor: "pointer" }}><Grid size={15} /></button>
+            <button style={{ padding: "6px 10px", background: "transparent", borderRadius: 6, border: "none", color: "var(--text-muted)", cursor: "pointer" }}><List size={15} /></button>
+          </div>
         </div>
       </div>
 
       {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {mockMedia.map((file) => (
           <div
             key={file.name}

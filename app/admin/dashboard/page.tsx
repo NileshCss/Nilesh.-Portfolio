@@ -336,7 +336,7 @@ export default function AdminDashboard() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1400 }}>
       {/* ── 5 Stats Cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           label="Total Projects"
           value={stats.projects}
@@ -390,7 +390,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Main 3-column grid ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.9fr", gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_0.9fr] gap-5">
 
         {/* Col 1 — Recent Projects */}
         <SectionCard title="Recent Projects" action="View All" actionHref="/admin/projects">
@@ -674,7 +674,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Bottom 2-column row ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Col 1 — Recent Messages */}
         <SectionCard title="Recent Messages" action="View All" actionHref="/admin/contact-messages">

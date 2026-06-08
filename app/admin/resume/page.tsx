@@ -145,7 +145,7 @@ export default function ResumePage() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="rounded-xl" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", padding: 24 }}>
             <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "1rem", color: "var(--text-primary)", marginBottom: 16 }}>
@@ -171,7 +171,7 @@ export default function ResumePage() {
               </div>
             )}
 
-            <div className="flex gap-3 mt-4">
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
               <button 
                 onClick={handleDownload}
                 disabled={!resumeUrl || isUploading || isDeleting}
@@ -198,7 +198,7 @@ export default function ResumePage() {
               <button 
                 onClick={handleDelete}
                 disabled={!resumeUrl || isUploading || isDeleting}
-                className="flex items-center gap-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" 
+                className="flex items-center gap-2 rounded-lg flex-1 sm:flex-none justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" 
                 style={{ padding: "10px 14px", background: "var(--red-pale)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem" }}
               >
                 {isDeleting ? (

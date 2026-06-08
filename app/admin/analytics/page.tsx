@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Overview cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {overviewStats.map(({ label, value, icon: Icon, change }) => (
           <div key={label} className="rounded-xl p-5" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}>
             <div className="flex items-start justify-between mb-3">
@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
         {/* Visitors over time */}
         <div className="rounded-xl" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", padding: 24 }}>
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary)", marginBottom: 20 }}>Visitors Over Time</h3>
