@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FormModal } from "@/components/admin/FormModal";
 import { DeleteConfirmModal } from "@/components/admin/DeleteConfirmModal";
+import { useToast } from "@/lib/hooks/useToast";
 import {
   Plus,
   Pencil,
@@ -71,6 +72,7 @@ export default function ProjectsPage() {
   const [featuresText, setFeaturesText] = useState("");
   const [techText, setTechText] = useState("");
   const supabase = createClient();
+  const { toast } = useToast();
 
   const fetchProjects = useCallback(async () => {
     const { data } = await supabase
@@ -113,9 +115,19 @@ export default function ProjectsPage() {
     };
 
     if (editing) {
-      await supabase.from("projects").update(payload).eq("id", editing.id);
+      const { error } = await supabase.from("projects").update(payload).eq("id", editing.id);
+      if (error) {
+        toast.error("Failed to update project: " + error.message);
+      } else {
+        toast.success("Project updated successfully!");
+      }
     } else {
-      await supabase.from("projects").insert(payload);
+      const { error } = await supabase.from("projects").insert(payload);
+      if (error) {
+        toast.error("Failed to create project: " + error.message);
+      } else {
+        toast.success("Project created successfully!");
+      }
     }
 
     setSaving(false);
@@ -126,14 +138,24 @@ export default function ProjectsPage() {
   const handleDelete = async () => {
     if (!deleteModal) return;
     setDeleting(true);
-    await supabase.from("projects").delete().eq("id", deleteModal);
+    const { error } = await supabase.from("projects").delete().eq("id", deleteModal);
+    if (error) {
+      toast.error("Failed to delete project: " + error.message);
+    } else {
+      toast.success("Project deleted successfully!");
+    }
     setDeleting(false);
     setDeleteModal(null);
     fetchProjects();
   };
 
   const toggleFeatured = async (id: string, current: boolean) => {
-    await supabase.from("projects").update({ is_featured: !current }).eq("id", id);
+    const { error } = await supabase.from("projects").update({ is_featured: !current }).eq("id", id);
+    if (error) {
+      toast.error("Failed to update featured status: " + error.message);
+    } else {
+      toast.success(`Project ${!current ? "featured" : "unfeatured"} successfully!`);
+    }
     fetchProjects();
   };
 

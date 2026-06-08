@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { createClient } from "@/lib/supabase/client";
@@ -11,8 +12,20 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [userEmail, setUserEmail] = useState<string>();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { setTheme } = useTheme();
+
+  // Set admin default theme to dark on first mount
+  useEffect(() => {
+    setMounted(true);
+    // Only set to dark if no preference stored yet
+    const stored = localStorage.getItem("theme");
+    if (!stored) {
+      setTheme("dark");
+    }
+  }, [setTheme]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -52,14 +65,31 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     router.push("/admin/login");
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0a12] text-white/90 font-sans">
-      {/* Background gradient mesh */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/[0.03] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-600/[0.02] rounded-full blur-[100px]" />
+  // Prevent flash before mount
+  if (!mounted) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "#0A0F1E" }}
+      >
+        <div
+          className="rounded-full animate-spin"
+          style={{
+            width: 32,
+            height: 32,
+            border: "2.5px solid rgba(59,130,246,0.2)",
+            borderTopColor: "#3B82F6",
+          }}
+        />
       </div>
+    );
+  }
 
+  return (
+    <div
+      className="min-h-screen font-sans"
+      style={{ background: "var(--admin-bg)", color: "var(--text-primary)" }}
+    >
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
@@ -68,13 +98,11 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
       />
 
       <div
-        className={cn(
-          "relative transition-all duration-300 ease-out",
-          collapsed ? "ml-[72px]" : "ml-[260px]"
-        )}
+        className={cn("relative transition-all duration-300 ease-out min-h-screen")}
+        style={{ marginLeft: collapsed ? 72 : 240 }}
       >
         <AdminHeader userEmail={userEmail} />
-        <main className="p-6 md:p-8">
+        <main style={{ padding: "24px 32px" }}>
           {children}
         </main>
       </div>

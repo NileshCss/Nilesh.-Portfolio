@@ -39,16 +39,19 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-  const isLoginPage = request.nextUrl.pathname === "/admin/login";
+  const isAuthPage =
+    request.nextUrl.pathname === "/admin/login" ||
+    request.nextUrl.pathname === "/admin/forgot-password" ||
+    request.nextUrl.pathname === "/admin/reset-password";
 
-  if (isAdminRoute && !isLoginPage && !user) {
+  if (isAdminRoute && !isAuthPage && !user) {
     // Not authenticated — redirect to login
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     return NextResponse.redirect(url);
   }
 
-  if (isLoginPage && user) {
+  if (isAuthPage && user) {
     // Already authenticated — redirect to dashboard
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
@@ -61,3 +64,4 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/admin/:path*"],
 };
+

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ThemeProvider } from "next-themes";
+import { ToastProvider } from "@/lib/hooks/useToast";
+import { ToastContainer } from "@/components/ui/Toast";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -97,10 +100,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} scroll-smooth`} suppressHydrationWarning>
-      <body className="bg-white text-slate-900 antialiased font-sans selection:bg-blue-100 selection:text-blue-900" suppressHydrationWarning>
-        {children}
+      <body className="antialiased font-sans" suppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
+        >
+          <ToastProvider>
+            {children}
+            <ToastContainer />
+          </ToastProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
   );
 }
+

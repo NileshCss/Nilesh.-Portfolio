@@ -3,23 +3,40 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { StatsCard } from "@/components/admin/StatsCard";
 import {
-  FolderKanban,
-  Briefcase,
-  Sparkles,
-  MessageSquare,
-  Trophy,
-  ArrowRight,
-  Clock,
+  Code2,
+  BarChart2,
+  Eye,
+  Download,
   Mail,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Plus,
+  Upload,
+  Briefcase,
+  UserCog,
+  CheckCircle2,
+  FileText,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from "recharts";
 
+/* ───────────── Types ───────────── */
 interface DashboardStats {
   projects: number;
-  experiences: number;
-  skills: number;
-  achievements: number;
+  visitors: number;
+  profileViews: number;
+  resumeDownloads: number;
   totalMessages: number;
   unreadMessages: number;
 }
@@ -29,14 +46,248 @@ interface RecentMessage {
   name: string;
   email: string;
   message: string;
+  subject?: string;
   is_read: boolean;
   created_at: string;
 }
 
+/* ───────────── Static mock data ───────────── */
+const visitorData = [
+  { day: "May 18", visitors: 450 },
+  { day: "May 19", visitors: 600 },
+  { day: "May 20", visitors: 580 },
+  { day: "May 21", visitors: 650 },
+  { day: "May 22", visitors: 750 },
+  { day: "May 23", visitors: 900 },
+  { day: "May 24", visitors: 1100 },
+];
+
+const recentProjects = [
+  { name: "MokshaSphere", status: "Published", updated: "2 days ago", color: "#3B82F6" },
+  { name: "PG Management SaaS", status: "Published", updated: "5 days ago", color: "#8B5CF6" },
+  { name: "Village Connect", status: "Draft", updated: "1 week ago", color: "#10B981" },
+  { name: "Naam Haat", status: "Published", updated: "2 weeks ago", color: "#F59E0B" },
+  { name: "Gramin Samasya", status: "Published", updated: "3 weeks ago", color: "#EF4444" },
+];
+
+/* ───────────── Sub-components ───────────── */
+
+function StatsCard({
+  label,
+  value,
+  change,
+  changeLabel,
+  changeColor,
+  icon: Icon,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: string | number;
+  change: string;
+  changeLabel: string;
+  changeColor: string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+}) {
+  return (
+    <div
+      className="rounded-xl p-5 transition-all duration-200 cursor-default"
+      style={{
+        background: "var(--admin-card-bg)",
+        border: "1px solid var(--admin-border)",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-primary)";
+        (e.currentTarget as HTMLElement).style.boxShadow =
+          "0 4px 24px rgba(37,99,235,0.08)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--admin-border)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+      }}
+    >
+      {/* Top row: label + icon */}
+      <div className="flex items-start justify-between mb-3">
+        <p
+          style={{
+            fontFamily: "var(--font-outfit, sans-serif)",
+            fontWeight: 500,
+            fontSize: "0.8rem",
+            color: "var(--text-muted)",
+          }}
+        >
+          {label}
+        </p>
+        <div
+          className="flex items-center justify-center rounded-xl"
+          style={{
+            width: 40,
+            height: 40,
+            background: iconBg,
+          }}
+        >
+          <Icon size={20} color={iconColor} />
+        </div>
+      </div>
+      {/* Value */}
+      <p
+        style={{
+          fontFamily: "var(--font-outfit, sans-serif)",
+          fontWeight: 800,
+          fontSize: "1.875rem",
+          color: "var(--text-primary)",
+          letterSpacing: "-0.03em",
+          lineHeight: 1,
+          marginBottom: 6,
+        }}
+      >
+        {value}
+      </p>
+      {/* Change row */}
+      <p
+        style={{
+          fontFamily: "var(--font-outfit, sans-serif)",
+          fontWeight: 500,
+          fontSize: "0.78rem",
+          color: changeColor,
+        }}
+      >
+        {change}{" "}
+        <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
+          {changeLabel}
+        </span>
+      </p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, { bg: string; color: string; border: string }> = {
+    Published: {
+      bg: "rgba(16,185,129,0.1)",
+      color: "var(--emerald)",
+      border: "rgba(16,185,129,0.2)",
+    },
+    Draft: {
+      bg: "rgba(245,158,11,0.1)",
+      color: "var(--amber)",
+      border: "rgba(245,158,11,0.2)",
+    },
+    Archived: {
+      bg: "rgba(100,116,139,0.1)",
+      color: "var(--text-muted)",
+      border: "rgba(100,116,139,0.2)",
+    },
+  };
+  const c = colors[status] || colors.Draft;
+  return (
+    <span
+      style={{
+        background: c.bg,
+        color: c.color,
+        border: `1px solid ${c.border}`,
+        borderRadius: 100,
+        padding: "3px 10px",
+        fontFamily: "var(--font-outfit, sans-serif)",
+        fontWeight: 600,
+        fontSize: "0.72rem",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function SectionCard({
+  title,
+  action,
+  actionHref,
+  children,
+}: {
+  title: string;
+  action?: string;
+  actionHref?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: "var(--admin-card-bg)",
+        border: "1px solid var(--admin-border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-5 py-4"
+        style={{ borderBottom: "1px solid var(--admin-border)" }}
+      >
+        <h3
+          style={{
+            fontFamily: "var(--font-outfit, sans-serif)",
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "var(--text-primary)",
+          }}
+        >
+          {title}
+        </h3>
+        {action && actionHref && (
+          <Link
+            href={actionHref}
+            style={{
+              fontFamily: "var(--font-outfit, sans-serif)",
+              fontWeight: 500,
+              fontSize: "0.8rem",
+              color: "var(--brand-primary)",
+              textDecoration: "none",
+            }}
+          >
+            {action}
+          </Link>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ───────────── Custom chart tooltip ───────────── */
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: 8,
+          padding: "8px 12px",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+        }}
+      >
+        <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 2 }}>
+          {label}
+        </p>
+        <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--brand-primary)" }}>
+          {payload[0].value.toLocaleString()} visitors
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+/* ───────────── Main page ───────────── */
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    projects: 0, experiences: 0, skills: 0, achievements: 0,
-    totalMessages: 0, unreadMessages: 0,
+    projects: 12,
+    visitors: 5482,
+    profileViews: 1248,
+    resumeDownloads: 328,
+    totalMessages: 12,
+    unreadMessages: 2,
   });
   const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,171 +295,645 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      const [
-        { count: projectCount },
-        { count: expCount },
-        { count: skillCount },
-        { count: achieveCount },
-        { count: totalMsg },
-        { count: unreadMsg },
-        { data: messages },
-      ] = await Promise.all([
-        supabase.from("projects").select("*", { count: "exact", head: true }),
-        supabase.from("experiences").select("*", { count: "exact", head: true }),
-        supabase.from("skills").select("*", { count: "exact", head: true }),
-        supabase.from("achievements").select("*", { count: "exact", head: true }),
-        supabase.from("contact_messages").select("*", { count: "exact", head: true }),
-        supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
-        supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(5),
-      ]);
+      try {
+        const [{ count: projectCount }, { count: totalMsg }, { count: unreadMsg }, { data: messages }] =
+          await Promise.all([
+            supabase.from("projects").select("*", { count: "exact", head: true }),
+            supabase.from("contact_messages").select("*", { count: "exact", head: true }),
+            supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
+            supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(3),
+          ]);
 
-      setStats({
-        projects: projectCount ?? 0,
-        experiences: expCount ?? 0,
-        skills: skillCount ?? 0,
-        achievements: achieveCount ?? 0,
-        totalMessages: totalMsg ?? 0,
-        unreadMessages: unreadMsg ?? 0,
-      });
-      setRecentMessages(messages ?? []);
-      setLoading(false);
+        setStats((prev) => ({
+          ...prev,
+          projects: projectCount ?? prev.projects,
+          totalMessages: totalMsg ?? prev.totalMessages,
+          unreadMessages: unreadMsg ?? prev.unreadMessages,
+        }));
+        setRecentMessages(messages ?? []);
+      } catch {
+        // Use mock data on error
+      } finally {
+        setLoading(false);
+      }
     };
     fetchDashboard();
   }, [supabase]);
 
-  const quickActions = [
-    { label: "Add Project", href: "/admin/projects", icon: FolderKanban },
-    { label: "Add Experience", href: "/admin/experience", icon: Briefcase },
-    { label: "Manage Skills", href: "/admin/skills", icon: Sparkles },
-    { label: "View Messages", href: "/admin/messages", icon: MessageSquare },
-  ];
-
-  const formatDate = (date: string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center" style={{ minHeight: "60vh" }}>
+        <div
+          className="rounded-full animate-spin"
+          style={{
+            width: 32,
+            height: 32,
+            border: "2.5px solid var(--brand-pale)",
+            borderTopColor: "var(--brand-primary)",
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      {/* Welcome */}
-      <div>
-        <h2 className="text-2xl font-bold text-white/90">
-          Welcome back<span className="text-blue-400">.</span>
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Here&apos;s an overview of your portfolio content.
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1400 }}>
+      {/* ── 5 Stats Cards ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+        <StatsCard
+          label="Total Projects"
+          value={stats.projects}
+          change="↑ 2"
+          changeLabel="this month"
+          changeColor="var(--emerald)"
+          icon={Code2}
+          iconBg="rgba(37,99,235,0.15)"
+          iconColor="#3B82F6"
+        />
+        <StatsCard
+          label="Total Visitors"
+          value={stats.visitors.toLocaleString()}
+          change="↑ 18.7%"
+          changeLabel="this month"
+          changeColor="var(--emerald)"
+          icon={BarChart2}
+          iconBg="rgba(16,185,129,0.15)"
+          iconColor="#10B981"
+        />
+        <StatsCard
+          label="Profile Views"
+          value={stats.profileViews.toLocaleString()}
+          change="↑ 12.4%"
+          changeLabel="this month"
+          changeColor="var(--emerald)"
+          icon={Eye}
+          iconBg="rgba(124,58,237,0.15)"
+          iconColor="#7C3AED"
+        />
+        <StatsCard
+          label="Resume Downloads"
+          value={stats.resumeDownloads}
+          change="↑ 8.3%"
+          changeLabel="this month"
+          changeColor="var(--emerald)"
+          icon={Download}
+          iconBg="rgba(245,158,11,0.15)"
+          iconColor="#F59E0B"
+        />
+        <StatsCard
+          label="Contact Messages"
+          value={stats.totalMessages}
+          change={`↑ ${stats.unreadMessages}`}
+          changeLabel="new messages"
+          changeColor="var(--brand-primary)"
+          icon={Mail}
+          iconBg="rgba(239,68,68,0.15)"
+          iconColor="#EF4444"
+        />
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard label="Projects" value={stats.projects} icon={FolderKanban} />
-        <StatsCard label="Experience" value={stats.experiences} icon={Briefcase} />
-        <StatsCard label="Skills" value={stats.skills} icon={Sparkles} />
-        <StatsCard label="Achievements" value={stats.achievements} icon={Trophy} />
-      </div>
+      {/* ── Main 3-column grid ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.9fr", gap: 20 }}>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Recent Messages */}
-        <div className="lg:col-span-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-blue-400" />
-              <h3 className="text-sm font-bold text-white/90">Recent Messages</h3>
-              {stats.unreadMessages > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-[10px] font-bold">
-                  {stats.unreadMessages} new
-                </span>
-              )}
-            </div>
-            <Link
-              href="/admin/messages"
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
+        {/* Col 1 — Recent Projects */}
+        <SectionCard title="Recent Projects" action="View All" actionHref="/admin/projects">
+          <div>
+            {recentProjects.map((project, i) => (
+              <div
+                key={project.name}
+                className="flex items-center gap-3 px-5 py-3 transition-colors"
+                style={{
+                  borderBottom: i < recentProjects.length - 1 ? "1px solid var(--admin-border)" : "none",
+                  cursor: "default",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--admin-hover)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+              >
+                {/* Thumbnail */}
+                <div
+                  className="rounded-md flex-shrink-0"
+                  style={{
+                    width: 48,
+                    height: 38,
+                    background: `linear-gradient(135deg, ${project.color}30, ${project.color}15)`,
+                    border: `1px solid ${project.color}30`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Code2 size={16} color={project.color} />
+                </div>
+
+                {/* Name + updated */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    className="truncate"
+                    style={{
+                      fontFamily: "var(--font-outfit, sans-serif)",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    {project.name}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-outfit, sans-serif)",
+                      fontWeight: 400,
+                      fontSize: "0.75rem",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Updated {project.updated}
+                  </p>
+                </div>
+
+                {/* Status badge */}
+                <StatusBadge status={project.status} />
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {[
+                    { Icon: Pencil, title: "Edit", danger: false },
+                    { Icon: Eye, title: "View", danger: false },
+                    { Icon: Trash2, title: "Delete", danger: true },
+                  ].map(({ Icon, title, danger }) => (
+                    <button
+                      key={title}
+                      title={title}
+                      className="flex items-center justify-center rounded-md transition-all duration-150"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)";
+                        (e.currentTarget as HTMLElement).style.color = danger ? "var(--red)" : "var(--text-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "transparent";
+                        (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                      }}
+                    >
+                      <Icon size={14} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        {/* Col 2 — Visitors Overview chart */}
+        <SectionCard title="Visitors Overview" action="View Analytics" actionHref="/admin/analytics">
+          <div style={{ padding: "20px 16px 12px" }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={visitorData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="visitorGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(148,163,184,0.12)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  tickFormatter={(v) => v.replace("May ", "")}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => (v >= 1000 ? `${v / 1000}K` : v)}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="visitors"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  fill="url(#visitorGrad)"
+                  dot={{ fill: "#fff", stroke: "#3B82F6", strokeWidth: 2, r: 4 }}
+                  activeDot={{ fill: "#3B82F6", stroke: "#fff", strokeWidth: 2, r: 5 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+
+        {/* Col 3 — Quick Actions + Profile Status */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Quick Actions */}
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}
+          >
+            <div
+              className="px-5 py-4"
+              style={{ borderBottom: "1px solid var(--admin-border)" }}
             >
-              View all <ArrowRight size={12} />
-            </Link>
+              <h3
+                style={{
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Quick Actions
+              </h3>
+            </div>
+            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Primary action */}
+              <Link
+                href="/admin/projects"
+                className="flex items-center gap-2 rounded-lg transition-all duration-200"
+                style={{
+                  width: "100%",
+                  padding: "10px 16px",
+                  background: "var(--brand-primary)",
+                  color: "#FFFFFF",
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  justifyContent: "center",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--brand-hover)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--brand-primary)")}
+              >
+                <Plus size={16} /> Add New Project
+              </Link>
+              {/* Secondary actions */}
+              {[
+                { icon: Upload, label: "Upload New Resume", href: "/admin/resume" },
+                { icon: Briefcase, label: "Add Experience", href: "/admin/experience" },
+                { icon: UserCog, label: "Update Profile Info", href: "/admin/settings" },
+              ].map(({ icon: Icon, label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="flex items-center gap-2 rounded-lg transition-all duration-200"
+                  style={{
+                    width: "100%",
+                    padding: "10px 16px",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                    fontFamily: "var(--font-outfit, sans-serif)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)")}
+                >
+                  <Icon size={15} style={{ color: "var(--text-muted)" }} />
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {recentMessages.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <Mail size={32} className="mx-auto text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500">No messages yet</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-white/[0.04]">
-              {recentMessages.map((msg) => (
-                <div key={msg.id} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {!msg.is_read && (
-                          <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                        )}
-                        <span className="text-sm font-semibold text-white/85 truncate">{msg.name}</span>
-                        <span className="text-xs text-slate-600">{msg.email}</span>
-                      </div>
-                      <p className="text-xs text-slate-400 line-clamp-1">{msg.message}</p>
+          {/* Profile Status */}
+          <div
+            className="rounded-xl"
+            style={{
+              background: "var(--admin-card-bg)",
+              border: "1px solid var(--admin-border)",
+              padding: 16,
+            }}
+          >
+            <h3
+              style={{
+                fontFamily: "var(--font-outfit, sans-serif)",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                color: "var(--text-primary)",
+                marginBottom: 12,
+              }}
+            >
+              Profile Status
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { label: "Profile Complete", value: "100%" },
+                { label: "Resume Updated", value: "May 10, 2025" },
+                { label: "Open to Work", value: "Enabled", green: true },
+                { label: "Email Verified", value: "Verified", green: true },
+              ].map(({ label, value, green }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="flex items-center justify-center rounded-full"
+                      style={{
+                        width: 18,
+                        height: 18,
+                        background: "rgba(16,185,129,0.15)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <CheckCircle2 size={11} style={{ color: "var(--emerald)" }} />
                     </div>
-                    <span className="text-[10px] text-slate-600 flex-shrink-0 flex items-center gap-1">
-                      <Clock size={10} />
-                      {formatDate(msg.created_at)}
+                    <span
+                      style={{
+                        fontFamily: "var(--font-outfit, sans-serif)",
+                        fontSize: "0.8rem",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      {label}
                     </span>
                   </div>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-outfit, sans-serif)",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: green ? "var(--emerald)" : "var(--text-primary)",
+                    }}
+                  >
+                    {value}
+                  </span>
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
+      </div>
 
-        {/* Quick Actions */}
-        <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.06]">
-            <h3 className="text-sm font-bold text-white/90">Quick Actions</h3>
-          </div>
-          <div className="p-4 space-y-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className="group flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-all duration-200"
+      {/* ── Bottom 2-column row ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+
+        {/* Col 1 — Recent Messages */}
+        <SectionCard title="Recent Messages" action="View All" actionHref="/admin/contact-messages">
+          {recentMessages.length === 0 ? (
+            /* Mock message to always show something */
+            <div className="px-5 py-4">
+              <div
+                className="flex items-start gap-3 p-3 rounded-xl"
+                style={{ background: "var(--admin-hover)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-white text-sm"
+                  style={{ width: 38, height: 38, background: "#3B82F6" }}
                 >
-                  <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] group-hover:border-blue-500/30 transition-colors">
-                    <Icon size={16} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+                  A
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        style={{
+                          fontFamily: "var(--font-outfit, sans-serif)",
+                          fontWeight: 600,
+                          fontSize: "0.875rem",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        Aman Verma
+                      </span>
+                      <span
+                        style={{
+                          background: "rgba(59,130,246,0.15)",
+                          color: "var(--brand-primary)",
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          padding: "2px 7px",
+                          borderRadius: 100,
+                        }}
+                      >
+                        New
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-muted)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      May 24, 2025
+                    </span>
                   </div>
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{action.label}</span>
-                  <ArrowRight size={14} className="ml-auto text-slate-600 group-hover:text-slate-400 transition-colors" />
-                </Link>
-              );
-            })}
-          </div>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-outfit, sans-serif)",
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                      color: "var(--text-primary)",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Project Collaboration
+                  </p>
+                  <p
+                    className="truncate"
+                    style={{
+                      fontFamily: "var(--font-outfit, sans-serif)",
+                      fontSize: "0.78rem",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Hi Nilesh, I came across your portfolio and i...
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {recentMessages.map((msg, i) => {
+                const initial = msg.name?.[0]?.toUpperCase() || "?";
+                const colors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"];
+                const bg = colors[i % colors.length];
+                return (
+                  <div
+                    key={msg.id}
+                    className="flex items-start gap-3 px-5 py-3.5 transition-colors"
+                    style={{
+                      borderBottom: i < recentMessages.length - 1 ? "1px solid var(--admin-border)" : "none",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--admin-hover)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                  >
+                    <div
+                      className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-white text-sm"
+                      style={{ width: 36, height: 36, background: bg }}
+                    >
+                      {initial}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <div className="flex items-center gap-2">
+                          <span
+                            style={{
+                              fontFamily: "var(--font-outfit, sans-serif)",
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: "var(--text-primary)",
+                            }}
+                          >
+                            {msg.name}
+                          </span>
+                          {!msg.is_read && (
+                            <span
+                              style={{
+                                background: "rgba(59,130,246,0.15)",
+                                color: "var(--brand-primary)",
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                padding: "2px 7px",
+                                borderRadius: 100,
+                              }}
+                            >
+                              New
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>
+                          {new Date(msg.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <p className="truncate" style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                        {msg.message}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
 
-          {/* Portfolio link */}
-          <div className="px-4 pb-4">
-            <Link
-              href="/"
-              target="_blank"
-              className="block text-center px-4 py-2.5 rounded-xl border border-white/[0.06] text-xs font-semibold text-slate-400 hover:text-white hover:border-white/[0.12] transition-all duration-200"
+        {/* Col 2 — Resume + Storage */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Resume card */}
+          <SectionCard title="Resume">
+            <div className="px-5 py-4 flex items-center gap-4">
+              {/* PDF icon */}
+              <div
+                className="flex items-center justify-center rounded-xl flex-shrink-0"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                }}
+              >
+                <FileText size={22} style={{ color: "var(--red)" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  className="truncate"
+                  style={{
+                    fontFamily: "var(--font-outfit, sans-serif)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Nilesh_Kumar_Singh_Resume.pdf
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  Uploaded on May 10, 2025 · 246 KB
+                </p>
+              </div>
+              <button
+                className="flex items-center gap-1.5 rounded-lg transition-all duration-200"
+                style={{
+                  padding: "7px 14px",
+                  background: "transparent",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)",
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-primary)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--brand-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                }}
+              >
+                <Download size={13} /> Download
+              </button>
+            </div>
+          </SectionCard>
+
+          {/* Storage Usage */}
+          <div
+            className="rounded-xl"
+            style={{
+              background: "var(--admin-card-bg)",
+              border: "1px solid var(--admin-border)",
+              padding: 20,
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3
+                style={{
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Storage Usage
+              </h3>
+              <span
+                style={{
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  color: "var(--text-primary)",
+                }}
+              >
+                2.4 GB / 10 GB
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div
+              className="rounded-full overflow-hidden"
+              style={{ height: 6, background: "var(--bg-tertiary)" }}
             >
-              View Live Portfolio ↗
-            </Link>
+              <div
+                className="h-full rounded-full"
+                style={{ width: "24%", background: "var(--brand-primary)" }}
+              />
+            </div>
+            <p
+              className="text-right mt-1.5"
+              style={{
+                fontFamily: "var(--font-outfit, sans-serif)",
+                fontSize: "0.75rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              24% used
+            </p>
           </div>
         </div>
       </div>

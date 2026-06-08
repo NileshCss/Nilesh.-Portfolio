@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { personal } from "@/data/personal";
 import type { PersonalInfo } from "@/types";
 import { Mail, Download, Sun, Moon, Lock } from "lucide-react";
@@ -30,35 +31,30 @@ function XIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-const quickLinks = ["About", "Experience", "Projects", "Skills", "Contact"];
-const resources = ["Resume", "Case Studies", "Documentation"];
+const quickLinks = [
+  { label: "About", href: "/about" },
+  { label: "Experience", href: "/experience" },
+  { label: "Projects", href: "/projects" },
+  { label: "Skills", href: "/skills" },
+  { label: "Contact", href: "/contact" },
+];
+
+const resources = [
+  { label: "Resume", href: "/resume" },
+  { label: "Services", href: "/services" },
+  { label: "Blog", href: "/blog" },
+];
 
 export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInfo }) {
   const year = new Date().getFullYear();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const initialTheme = savedTheme || systemTheme;
-    setTheme(initialTheme);
-    if (initialTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setMounted(true);
   }, []);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    localStorage.setItem("theme", nextTheme);
-    if (nextTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
+  const isDark = theme === "dark";
 
   const socials = [
     ...(personalInfo.linkedin ? [{ icon: LinkedInIcon, href: personalInfo.linkedin, label: "LinkedIn" }] : []),
@@ -68,16 +64,64 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
   ];
 
   return (
-    <footer className="bg-slate-50 border-t border-slate-200">
-      <div className="max-w-[1200px] mx-auto px-6 pt-16 pb-0">
+    <footer
+      className="border-t transition-colors duration-220"
+      style={{
+        background: "var(--bg-secondary)",
+        borderColor: "var(--border-default)",
+      }}
+    >
+      <div className="max-w-[1200px] mx-auto px-6 pt-16 pb-8">
         {/* 4-column grid */}
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1.5fr] gap-10 mb-10">
           {/* Col 1 — Brand */}
           <div>
-            <div className="text-[1.25rem] font-black text-slate-900 mb-3">
-              {personalInfo.firstName || "Nilesh"}<span className="text-blue-600">.</span>
+            {/* Logo Mark + Wordmark */}
+            <div className="flex items-center gap-2.5 mb-3">
+              <div
+                className="relative flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 32,
+                  height: 32,
+                  background: "#0F172A",
+                  borderRadius: "22%",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "Arial, sans-serif",
+                    fontWeight: 900,
+                    fontSize: 17,
+                    color: "#FFFFFF",
+                  }}
+                >
+                  N
+                </span>
+                <span
+                  className="absolute"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    background: "#3B82F6",
+                    borderRadius: "50%",
+                    bottom: -1,
+                    right: -1,
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 800,
+                  fontSize: "1.25rem",
+                  color: "var(--text-primary)",
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                Nilesh<span style={{ color: "#3B82F6" }}>.</span>
+              </span>
             </div>
-            <p className="text-[0.85rem] text-slate-500 leading-[1.65] max-w-[260px] mb-4">
+            <p className="text-[0.85rem] text-slate-500 dark:text-slate-400 leading-[1.65] max-w-[260px] mb-4">
               Full Stack Developer passionate about building scalable digital solutions and creating impact through technology.
             </p>
             <div className="flex items-center gap-2">
@@ -88,7 +132,7 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
                   target={href.startsWith("mailto") ? undefined : "_blank"}
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-[34px] h-[34px] flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                  className="w-[34px] h-[34px] flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200"
                 >
                   <Icon size={14} />
                 </Link>
@@ -98,17 +142,17 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
 
           {/* Col 2 — Quick Links */}
           <div>
-            <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
+            <h4 className="text-[0.78rem] font-black uppercase tracking-[0.07em] mb-4" style={{ color: "var(--text-primary)" }}>
               Quick Links
             </h4>
             <ul className="space-y-2">
               {quickLinks.map((link) => (
-                <li key={link}>
+                <li key={link.label}>
                   <Link
-                    href={`#${link.toLowerCase()}`}
-                    className="text-[0.85rem] text-slate-500 hover:text-blue-600 transition-colors"
+                    href={link.href}
+                    className="text-[0.85rem] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                   >
-                    {link}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -117,13 +161,18 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
 
           {/* Col 3 — Resources */}
           <div>
-            <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
+            <h4 className="text-[0.78rem] font-black uppercase tracking-[0.07em] mb-4" style={{ color: "var(--text-primary)" }}>
               Resources
             </h4>
             <ul className="space-y-2">
               {resources.map((r) => (
-                <li key={r}>
-                  <span className="text-[0.85rem] text-slate-500">{r}</span>
+                <li key={r.label}>
+                  <Link
+                    href={r.href}
+                    className="text-[0.85rem] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {r.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -131,17 +180,15 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
 
           {/* Col 4 — Let's Connect */}
           <div>
-            <h4 className="text-[0.78rem] font-black text-slate-900 uppercase tracking-[0.07em] mb-4">
+            <h4 className="text-[0.78rem] font-black uppercase tracking-[0.07em] mb-4" style={{ color: "var(--text-primary)" }}>
               Let&apos;s Connect
             </h4>
-            <p className="text-[0.8375rem] text-slate-500 mb-1">{personalInfo.email}</p>
-            <p className="text-[0.8375rem] text-slate-500 mb-5">{personalInfo.location || "India"}</p>
+            <p className="text-[0.8375rem] text-slate-500 dark:text-slate-400 mb-1">{personalInfo.email}</p>
+            <p className="text-[0.8375rem] text-slate-500 dark:text-slate-400 mb-5">{personalInfo.location || "India"}</p>
             {personalInfo.resumeUrl && (
               <Link
-                href={personalInfo.resumeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-[0.85rem] font-semibold hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                href="/resume"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-[0.85rem] font-semibold hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200"
               >
                 <Download size={14} />
                 Download Resume
@@ -151,38 +198,40 @@ export function Footer({ personalInfo = personal }: { personalInfo?: PersonalInf
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-slate-200 py-7 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-[0.8rem] text-slate-400">
+        <div className="border-t border-slate-200 dark:border-slate-800 py-7 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-[0.8rem] text-slate-400 dark:text-slate-500">
             &copy; {year} {personalInfo.name}. All Rights Reserved.
           </p>
 
           {/* Utilities: Theme Toggle & Admin Panel */}
           <div className="flex items-center gap-3">
             {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all duration-200 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm cursor-pointer"
-              title="Toggle Theme"
-            >
-              {theme === "light" ? (
-                <>
-                  <Moon size={13} className="text-slate-500" />
-                  <span>Dark Mode</span>
-                </>
-              ) : (
-                <>
-                  <Sun size={13} className="text-amber-500" />
-                  <span>Light Mode</span>
-                </>
-              )}
-            </button>
+            {mounted && (
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="flex items-center gap-1.5 text-xs font-semibold transition-all duration-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 shadow-sm cursor-pointer text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                title="Toggle Theme"
+              >
+                {isDark ? (
+                  <>
+                    <Sun size={13} className="text-amber-500" />
+                    <span>Light Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={13} className="text-slate-500" />
+                    <span>Dark Mode</span>
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Admin Panel Link */}
             <Link
               href="/admin"
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all duration-200 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 shadow-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
             >
-              <Lock size={12} className="text-slate-500" />
+              <Lock size={12} />
               <span>Admin Panel</span>
             </Link>
           </div>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FormModal } from "@/components/admin/FormModal";
 import { DeleteConfirmModal } from "@/components/admin/DeleteConfirmModal";
+import { useToast } from "@/lib/hooks/useToast";
 import { Plus, Pencil, Trash2, Building2, MapPin, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export default function ExperiencePage() {
   const [respText, setRespText] = useState("");
   const [highText, setHighText] = useState("");
   const supabase = createClient();
+  const { toast } = useToast();
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from("experiences").select("*").order("sort_order");
@@ -77,9 +79,19 @@ export default function ExperiencePage() {
     };
 
     if (editing) {
-      await supabase.from("experiences").update(payload).eq("id", editing.id);
+      const { error } = await supabase.from("experiences").update(payload).eq("id", editing.id);
+      if (error) {
+        toast.error("Failed to update experience: " + error.message);
+      } else {
+        toast.success("Experience updated successfully!");
+      }
     } else {
-      await supabase.from("experiences").insert(payload);
+      const { error } = await supabase.from("experiences").insert(payload);
+      if (error) {
+        toast.error("Failed to create experience: " + error.message);
+      } else {
+        toast.success("Experience created successfully!");
+      }
     }
 
     setSaving(false);
@@ -90,7 +102,12 @@ export default function ExperiencePage() {
   const handleDelete = async () => {
     if (!deleteModal) return;
     setDeleting(true);
-    await supabase.from("experiences").delete().eq("id", deleteModal);
+    const { error } = await supabase.from("experiences").delete().eq("id", deleteModal);
+    if (error) {
+      toast.error("Failed to delete experience: " + error.message);
+    } else {
+      toast.success("Experience deleted successfully!");
+    }
     setDeleting(false);
     setDeleteModal(null);
     fetch();

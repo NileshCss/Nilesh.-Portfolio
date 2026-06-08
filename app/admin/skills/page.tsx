@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FormModal } from "@/components/admin/FormModal";
 import { DeleteConfirmModal } from "@/components/admin/DeleteConfirmModal";
+import { useToast } from "@/lib/hooks/useToast";
 import { Plus, Pencil, Trash2, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export default function SkillsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const supabase = createClient();
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     const { data: cats } = await supabase.from("skill_categories").select("*").order("sort_order");
@@ -79,9 +81,19 @@ export default function SkillsPage() {
       slug: catForm.slug || catForm.label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
     };
     if (editingCat) {
-      await supabase.from("skill_categories").update(payload).eq("id", editingCat.id);
+      const { error } = await supabase.from("skill_categories").update(payload).eq("id", editingCat.id);
+      if (error) {
+        toast.error("Failed to update category: " + error.message);
+      } else {
+        toast.success("Category updated successfully!");
+      }
     } else {
-      await supabase.from("skill_categories").insert(payload);
+      const { error } = await supabase.from("skill_categories").insert(payload);
+      if (error) {
+        toast.error("Failed to create category: " + error.message);
+      } else {
+        toast.success("Category created successfully!");
+      }
     }
     setSaving(false);
     setCatModal(false);
@@ -104,9 +116,19 @@ export default function SkillsPage() {
   const saveSkill = async () => {
     setSaving(true);
     if (editingSkill) {
-      await supabase.from("skills").update(skillForm).eq("id", editingSkill.id);
+      const { error } = await supabase.from("skills").update(skillForm).eq("id", editingSkill.id);
+      if (error) {
+        toast.error("Failed to update skill: " + error.message);
+      } else {
+        toast.success("Skill updated successfully!");
+      }
     } else {
-      await supabase.from("skills").insert(skillForm);
+      const { error } = await supabase.from("skills").insert(skillForm);
+      if (error) {
+        toast.error("Failed to add skill: " + error.message);
+      } else {
+        toast.success("Skill added successfully!");
+      }
     }
     setSaving(false);
     setSkillModal(false);
@@ -117,9 +139,19 @@ export default function SkillsPage() {
     if (!deleteModal) return;
     setDeleting(true);
     if (deleteModal.type === "category") {
-      await supabase.from("skill_categories").delete().eq("id", deleteModal.id);
+      const { error } = await supabase.from("skill_categories").delete().eq("id", deleteModal.id);
+      if (error) {
+        toast.error("Failed to delete category: " + error.message);
+      } else {
+        toast.success("Category deleted successfully!");
+      }
     } else {
-      await supabase.from("skills").delete().eq("id", deleteModal.id);
+      const { error } = await supabase.from("skills").delete().eq("id", deleteModal.id);
+      if (error) {
+        toast.error("Failed to delete skill: " + error.message);
+      } else {
+        toast.success("Skill deleted successfully!");
+      }
     }
     setDeleting(false);
     setDeleteModal(null);
