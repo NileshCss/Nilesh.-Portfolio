@@ -32,7 +32,7 @@ const navSections = [
   {
     label: "MAIN",
     items: [
-      { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
       { label: "Projects", href: "/admin/projects", icon: FolderKanban },
       { label: "Experience", href: "/admin/experience", icon: Briefcase },
       { label: "Skills", href: "/admin/skills", icon: Zap },
@@ -79,7 +79,7 @@ export function Sidebar({ collapsed, onToggle, onLogout, unreadCount = 0 }: Side
   const { theme } = useTheme();
 
   const isActive = (href: string) => {
-    if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin/dashboard") return pathname === "/admin/dashboard" || pathname === "/admin";
     return pathname.startsWith(href);
   };
 

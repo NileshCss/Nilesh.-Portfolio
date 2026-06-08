@@ -44,6 +44,13 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname === "/admin/forgot-password" ||
     request.nextUrl.pathname === "/admin/reset-password";
 
+  // Redirect root /admin page based on session
+  if (request.nextUrl.pathname === "/admin") {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/admin/dashboard" : "/admin/login";
+    return NextResponse.redirect(url);
+  }
+
   if (isAdminRoute && !isAuthPage && !user) {
     // Not authenticated — redirect to login
     const url = request.nextUrl.clone();
@@ -54,9 +61,10 @@ export async function proxy(request: NextRequest) {
   if (isAuthPage && user) {
     // Already authenticated — redirect to dashboard
     const url = request.nextUrl.clone();
-    url.pathname = "/admin";
+    url.pathname = "/admin/dashboard";
     return NextResponse.redirect(url);
   }
+
 
   return supabaseResponse;
 }

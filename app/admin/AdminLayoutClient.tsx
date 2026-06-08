@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -14,6 +14,7 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const { setTheme } = useTheme();
 
@@ -65,6 +66,11 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     router.push("/admin/login");
   };
 
+  const isAuthPage =
+    pathname === "/admin/login" ||
+    pathname === "/admin/forgot-password" ||
+    pathname === "/admin/reset-password";
+
   // Prevent flash before mount
   if (!mounted) {
     return (
@@ -83,6 +89,10 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
         />
       </div>
     );
+  }
+
+  if (isAuthPage) {
+    return <>{children}</>;
   }
 
   return (
@@ -109,3 +119,4 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
