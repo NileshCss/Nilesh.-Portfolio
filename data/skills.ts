@@ -61,4 +61,16 @@ export const skillCategories: SkillCategory[] = [
       { name: "Prompt Engineering", level: "advanced" },
     ],
   },
+  {
+    id: "cloud-deployment",
+    label: "Cloud & Deployment",
+    icon: "Cloud",
+    skills: [
+      { name: "Vercel", level: "advanced" },
+      { name: "Netlify", level: "advanced" },
+      { name: "Supabase", level: "intermediate" },
+      { name: "Firebase", level: "intermediate" },
+      { name: "CI/CD", level: "intermediate" },
+    ],
+  },
 ];
