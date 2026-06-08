@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/lib/hooks/useToast";
 import { ToastContainer } from "@/components/ui/Toast";
+import { AuthErrorListener } from "@/components/ui/AuthErrorListener";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -110,6 +111,7 @@ export default function RootLayout({
           <ToastProvider>
             {children}
             <ToastContainer />
+            <AuthErrorListener />
           </ToastProvider>
         </ThemeProvider>
         <Analytics />
