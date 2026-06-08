@@ -33,10 +33,16 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh the auth session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh the auth session safely
+  let user = null;
+  try {
+    const {
+      data: { user: fetchedUser },
+    } = await supabase.auth.getUser();
+    user = fetchedUser;
+  } catch (err) {
+    console.error("Supabase auth check failed in proxy:", err);
+  }
 
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
   const isAuthPage =
