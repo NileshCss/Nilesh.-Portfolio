@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
-import { ArrowRight, Download, Calendar, GraduationCap, Code2, Star, Smile, Mail, MapPin, Briefcase, Clock } from "lucide-react";
+import { ArrowRight, Download, GraduationCap, Code2, Star, Smile, Mail, MapPin, Briefcase, Clock, Layers, CheckCircle2 } from "lucide-react";
 import { personal } from "@/data/personal";
 import type { PersonalInfo } from "@/types";
 
@@ -16,89 +16,12 @@ const item: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, type: "tween" } },
 };
 
-const statCells = [
-  { icon: GraduationCap, value: "MCA Graduate", label: "Post Graduate", color: "text-blue-600" },
-  { icon: Code2, value: "5+", label: "Projects Completed", color: "text-blue-600" },
-  { icon: Star, value: "Full Stack", label: "Java Developer", color: "text-blue-600" },
-  { icon: Smile, value: "Open To Work", label: "Opportunities", color: "text-emerald-500", valueColor: "text-emerald-500" },
-];
-
-const sidebarRows = [
-  {
-    icon: Mail,
-    label: "Email",
-    value: personal.email,
-    valueSize: "text-[0.8rem]",
-    iconBg: "bg-white border-slate-200 text-slate-500",
-  },
-  {
-    icon: MapPin,
-    label: "Location",
-    value: "Bihar, India",
-    iconBg: "bg-white border-slate-200 text-slate-500",
-  },
-  {
-    icon: Briefcase,
-    label: "Availability",
-    value: "Open To Work",
-    valueColor: "text-emerald-500",
-    iconBg: "bg-green-50 border-emerald-200 text-emerald-500",
-  },
-  {
-    icon: Clock,
-    label: "Experience",
-    value: "1+ Year",
-    iconBg: "bg-white border-slate-200 text-slate-500",
-  },
-  {
-    icon: GraduationCap,
-    label: "Education",
-    value: "MCA Graduate",
-    iconBg: "bg-white border-slate-200 text-slate-500",
-  },
-];
-
 export function HeroSection({ personalInfo = personal }: { personalInfo?: PersonalInfo }) {
   const statCells = [
-    { icon: GraduationCap, value: personalInfo.shortBio.split(" · ")[0] || "MCA Graduate", label: "Education", color: "text-blue-600" },
+    { icon: Clock, value: "2+", label: "Years Professional Experience", color: "text-blue-600" },
     { icon: Code2, value: "5+", label: "Projects Completed", color: "text-blue-600" },
     { icon: Star, value: personalInfo.role.split(" ").slice(-2).join(" ") || "Developer", label: "Specialty", color: "text-blue-600" },
     { icon: Smile, value: personalInfo.openToWork ? "Open To Work" : "Unavailable", label: "Status", color: personalInfo.openToWork ? "text-emerald-500" : "text-slate-400", valueColor: personalInfo.openToWork ? "text-emerald-500" : "text-slate-400" },
-  ];
-
-  const sidebarRows = [
-    {
-      icon: Mail,
-      label: "Email",
-      value: personalInfo.email,
-      valueSize: "text-[0.8rem]",
-      iconBg: "bg-white border-slate-200 text-slate-500",
-    },
-    {
-      icon: MapPin,
-      label: "Location",
-      value: personalInfo.location || "India",
-      iconBg: "bg-white border-slate-200 text-slate-500",
-    },
-    {
-      icon: Briefcase,
-      label: "Availability",
-      value: personalInfo.openToWork ? "Open To Work" : "Unavailable",
-      valueColor: personalInfo.openToWork ? "text-emerald-500" : "text-slate-400",
-      iconBg: personalInfo.openToWork ? "bg-green-50 border-emerald-200 text-emerald-500" : "bg-slate-50 border-slate-200 text-slate-400",
-    },
-    {
-      icon: Clock,
-      label: "Experience",
-      value: "1+ Year",
-      iconBg: "bg-white border-slate-200 text-slate-500",
-    },
-    {
-      icon: GraduationCap,
-      label: "Education",
-      value: personalInfo.shortBio.split(" · ")[0] || "MCA Graduate",
-      iconBg: "bg-white border-slate-200 text-slate-500",
-    },
   ];
 
   return (
@@ -124,8 +47,8 @@ export function HeroSection({ personalInfo = personal }: { personalInfo?: Person
       />
 
       <div className="relative max-w-[1200px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-16 items-start">
-          {/* LEFT COLUMN */}
+        <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-12 lg:gap-16 items-start">
+          {/* ── LEFT COLUMN: HERO CONTENT (70%) ── */}
           <motion.div initial="hidden" animate="visible" variants={container}>
             {/* Eyebrow */}
             <motion.div variants={item} className="flex items-center gap-2 mb-5">
@@ -160,39 +83,39 @@ export function HeroSection({ personalInfo = personal }: { personalInfo?: Person
               {personalInfo.tagline}
             </motion.p>
 
-            {/* Description */}
+            {/* Description (Short Introduction) */}
             <motion.p
               variants={item}
-              className="text-[0.9875rem] text-slate-500 leading-[1.75] max-w-[520px] mb-8"
+              className="text-[0.9875rem] text-slate-500 leading-[1.75] max-w-[540px] mb-8"
             >
               {personalInfo.bio.split("\n\n")[0]}
             </motion.p>
 
-            {/* Buttons */}
-            <motion.div variants={item} className="flex flex-wrap items-center gap-2.5 mb-4">
+            {/* Call To Action Buttons */}
+            <motion.div variants={item} className="flex flex-wrap items-center gap-3 mb-6">
               <Link
                 href="#projects"
-                className="inline-flex items-center gap-2 px-[22px] py-3 bg-blue-600 text-white text-[0.9375rem] font-semibold rounded-lg hover:bg-blue-500 hover:-translate-y-px transition-all duration-200 shadow-sm"
+                className="inline-flex items-center gap-2 px-[22px] py-3 bg-slate-900 text-white text-[0.9375rem] font-semibold rounded-lg hover:bg-slate-800 hover:-translate-y-px transition-all duration-200 shadow-sm"
               >
                 View Projects
                 <ArrowRight size={16} />
               </Link>
-              <button
-                onClick={() => (window as Window & { openConnectModal?: () => void }).openConnectModal?.()}
-                className="inline-flex items-center gap-2 px-5 py-[11px] bg-white text-slate-900 text-[0.9375rem] font-semibold rounded-lg border border-[#CBD5E1] hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+              <Link
+                href="#contact"
+                className="inline-flex items-center gap-2 px-5 py-[11px] bg-white text-slate-900 text-[0.9375rem] font-semibold rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 shadow-sm"
               >
-                <Calendar size={15} />
-                Schedule Meeting
-              </button>
+                <Mail size={15} className="text-slate-500" />
+                Contact Me
+              </Link>
               {personalInfo.resumeUrl && (
                 <Link
                   href={personalInfo.resumeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-[11px] bg-white text-slate-900 text-[0.9375rem] font-semibold rounded-lg border border-[#CBD5E1] hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-5 py-[11px] bg-white text-slate-900 text-[0.9375rem] font-semibold rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 shadow-sm"
                 >
-                  <Download size={15} />
-                  Download Resume
+                  <Download size={15} className="text-slate-500" />
+                  Resume
                 </Link>
               )}
             </motion.div>
@@ -205,54 +128,106 @@ export function HeroSection({ personalInfo = personal }: { personalInfo?: Person
             {/* Stats bar */}
             <motion.div
               variants={item}
-              className="grid grid-cols-2 sm:grid-cols-4 rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden"
+              className="grid grid-cols-2 sm:grid-cols-4 rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden"
             >
               {statCells.map((cell, i) => (
-                <div
+               <div
                   key={i}
-                  className="px-4 py-[18px] flex items-start gap-3 hover:bg-slate-50 transition-colors duration-200 border-r border-slate-200 last:border-r-0"
+                  className="px-4 py-[16px] flex flex-col justify-center gap-1 hover:bg-slate-50 transition-colors duration-200 border-r border-slate-200 last:border-r-0 border-b sm:border-b-0"
+                  style={i >= 2 ? { borderBottom: "none" } : undefined}
                 >
-                  <cell.icon size={18} className={`mt-0.5 shrink-0 ${cell.color}`} />
-                  <div>
-                    <p className={`text-[0.9375rem] font-bold ${cell.valueColor ?? "text-slate-900"} leading-tight`}>
+                  <div className="flex items-center gap-2">
+                    <cell.icon size={15} className={cell.color} />
+                    <p className={`text-[1rem] font-bold ${cell.valueColor ?? "text-slate-900"} leading-none`}>
                       {cell.value}
                     </p>
-                    <p className="text-[0.75rem] text-slate-400 mt-0.5">{cell.label}</p>
                   </div>
+                  <p className="text-[0.75rem] text-slate-500 font-medium leading-snug">{cell.label}</p>
                 </div>
               ))}
             </motion.div>
           </motion.div>
 
-          {/* RIGHT COLUMN — Sidebar Card */}
+          {/* ── RIGHT COLUMN: INFORMATION SIDEBAR (30%) ── */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, type: "tween" }}
-            className="lg:mt-2 bg-slate-50 border border-slate-200 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, type: "tween" }}
+            className="flex flex-col gap-5 lg:mt-2"
           >
-            {sidebarRows.map((row, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-3.5 px-5 py-4 hover:bg-white transition-colors duration-200 ${
-                  i < sidebarRows.length - 1 ? "border-b border-slate-200" : ""
-                }`}
-              >
-                {/* Icon */}
-                <div
-                  className={`w-[34px] h-[34px] shrink-0 flex items-center justify-center rounded-lg border ${row.iconBg}`}
-                >
-                  <row.icon size={15} />
+            {/* Contact Information Card */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <h3 className="flex items-center gap-2 text-[0.75rem] font-bold text-slate-400 uppercase tracking-wider mb-4">
+                <Briefcase size={14} /> Contact & Status
+              </h3>
+              <div className="flex flex-col gap-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-md bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                    <Mail size={14} className="text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[0.75rem] text-slate-400 font-medium">Email</p>
+                    <p className="text-[0.875rem] text-slate-900 font-semibold truncate">{personalInfo.email}</p>
+                  </div>
                 </div>
-                {/* Text */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-md bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                    <MapPin size={14} className="text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[0.75rem] text-slate-400 font-medium">Location</p>
+                    <p className="text-[0.875rem] text-slate-900 font-semibold truncate">Bengaluru, India</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={14} className="text-emerald-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[0.75rem] text-slate-400 font-medium">Availability</p>
+                    <p className="text-[0.875rem] text-emerald-600 font-semibold truncate">Open To Work</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tech Stack Card */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <h3 className="flex items-center gap-2 text-[0.75rem] font-bold text-slate-400 uppercase tracking-wider mb-4">
+                <Layers size={14} /> Tech Stack
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {["Java", "Spring Boot", "React", "Next.js", "TypeScript", "PostgreSQL"].map((tech) => (
+                  <span
+                    key={tech}
+                    className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-[0.75rem] font-semibold text-slate-700"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Education Card */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <h3 className="flex items-center gap-2 text-[0.75rem] font-bold text-slate-400 uppercase tracking-wider mb-4">
+                <GraduationCap size={14} /> Education
+              </h3>
+              <div className="flex flex-col gap-4">
                 <div>
-                  <p className="text-[0.75rem] font-medium text-slate-400 mb-0.5">{row.label}</p>
-                  <p className={`text-[0.875rem] font-semibold ${row.valueColor ?? "text-slate-900"} ${row.valueSize ?? ""} break-all`}>
-                    {row.value}
+                  <p className="text-[0.875rem] text-slate-900 font-bold">MCA</p>
+                  <p className="text-[0.8rem] text-slate-500 font-medium line-clamp-2 leading-snug mt-0.5">
+                    Acharya Institute of Graduate Studies
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.875rem] text-slate-900 font-bold">BCA</p>
+                  <p className="text-[0.8rem] text-slate-500 font-medium line-clamp-2 leading-snug mt-0.5">
+                    St. Columba&apos;s College
                   </p>
                 </div>
               </div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </div>
