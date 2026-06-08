@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, Calendar, Sun, Moon, User, Settings, LogOut, ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
@@ -31,10 +31,12 @@ interface AdminHeaderProps {
   userEmail?: string;
   isMobile?: boolean;
   onMenuToggle?: () => void;
+  onLogout?: () => void;
 }
 
-export function AdminHeader({ userEmail, isMobile, onMenuToggle }: AdminHeaderProps) {
+export function AdminHeader({ userEmail, isMobile, onMenuToggle, onLogout }: AdminHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const info = pathLabels[pathname] || { title: "Admin Panel", subtitle: "Portfolio CMS" };
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -261,11 +263,12 @@ export function AdminHeader({ userEmail, isMobile, onMenuToggle }: AdminHeaderPr
                   </div>
                 )}
                 {[
-                  { icon: User, label: "Profile" },
-                  { icon: Settings, label: "Settings" },
-                ].map(({ icon: Icon, label }) => (
+                  { icon: User, label: "Profile", action: () => { setAvatarMenuOpen(false); router.push("/admin/settings"); } },
+                  { icon: Settings, label: "Settings", action: () => { setAvatarMenuOpen(false); router.push("/admin/settings"); } },
+                ].map(({ icon: Icon, label, action }) => (
                   <button
                     key={label}
+                    onClick={action}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
                     style={{
                       color: "var(--text-secondary)",
@@ -289,6 +292,7 @@ export function AdminHeader({ userEmail, isMobile, onMenuToggle }: AdminHeaderPr
                 ))}
                 <div style={{ borderTop: "1px solid var(--border-default)" }} />
                 <button
+                  onClick={() => { setAvatarMenuOpen(false); onLogout?.(); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
                   style={{
                     color: "var(--red)",

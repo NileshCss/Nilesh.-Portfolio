@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   Code2,
@@ -48,6 +49,15 @@ interface RecentMessage {
   created_at: string;
 }
 
+interface RecentProject {
+  id: string;
+  title: string;
+  status: string;
+  updated_at: string;
+  live_url: string | null;
+  category: string;
+}
+
 /* ───────────── Static mock data ───────────── */
 const visitorData = [
   { day: "May 18", visitors: 450 },
@@ -59,13 +69,26 @@ const visitorData = [
   { day: "May 24", visitors: 1100 },
 ];
 
-const recentProjects = [
-  { name: "MokshaSphere", status: "Published", updated: "2 days ago", color: "#3B82F6" },
-  { name: "PG Management SaaS", status: "Published", updated: "5 days ago", color: "#8B5CF6" },
-  { name: "Village Connect", status: "Draft", updated: "1 week ago", color: "#10B981" },
-  { name: "Naam Haat", status: "Published", updated: "2 weeks ago", color: "#F59E0B" },
-  { name: "Gramin Samasya", status: "Published", updated: "3 weeks ago", color: "#EF4444" },
-];
+const projectColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"];
+
+function timeAgo(dateStr: string) {
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  const days = Math.floor(diff / 86400);
+  if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+}
+
+function projectStatus(status: string) {
+  if (status === "live") return "Published";
+  if (status === "development") return "Draft";
+  return "Published"; // completed
+}
 
 /* ───────────── Sub-components ───────────── */
 
@@ -279,27 +302,35 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 /* ───────────── Main page ───────────── */
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    projects: 12,
+    projects: 0,
     visitors: 5482,
     profileViews: 1248,
-    resumeDownloads: 328,
-    totalMessages: 12,
-    unreadMessages: 2,
+    resumeDownloads: 0,
+    totalMessages: 0,
+    unreadMessages: 0,
   });
   const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
+  const [recentProjectsList, setRecentProjectsList] = useState<RecentProject[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const [{ count: projectCount }, { count: totalMsg }, { count: unreadMsg }, { data: messages }] =
-          await Promise.all([
-            supabase.from("projects").select("*", { count: "exact", head: true }),
-            supabase.from("contact_messages").select("*", { count: "exact", head: true }),
-            supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
-            supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(3),
-          ]);
+        const [
+          { count: projectCount },
+          { count: totalMsg },
+          { count: unreadMsg },
+          { data: messages },
+          { data: projects },
+        ] = await Promise.all([
+          supabase.from("projects").select("*", { count: "exact", head: true }),
+          supabase.from("contact_messages").select("*", { count: "exact", head: true }),
+          supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
+          supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(3),
+          supabase.from("projects").select("id,title,status,updated_at,live_url,category").order("updated_at", { ascending: false }).limit(5),
+        ]);
 
         setStats((prev) => ({
           ...prev,
@@ -308,8 +339,9 @@ export default function AdminDashboard() {
           unreadMessages: unreadMsg ?? prev.unreadMessages,
         }));
         setRecentMessages(messages ?? []);
+        setRecentProjectsList(projects ?? []);
       } catch {
-        // Use mock data on error
+        // Use fallback data on error
       } finally {
         setLoading(false);
       }
@@ -395,95 +427,105 @@ export default function AdminDashboard() {
         {/* Col 1 — Recent Projects */}
         <SectionCard title="Recent Projects" action="View All" actionHref="/admin/projects">
           <div>
-            {recentProjects.map((project, i) => (
-              <div
-                key={project.name}
-                className="flex items-center gap-3 px-5 py-3 transition-colors"
-                style={{
-                  borderBottom: i < recentProjects.length - 1 ? "1px solid var(--admin-border)" : "none",
-                  cursor: "default",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--admin-hover)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-              >
-                {/* Thumbnail */}
-                <div
-                  className="rounded-md flex-shrink-0"
-                  style={{
-                    width: 48,
-                    height: 38,
-                    background: `linear-gradient(135deg, ${project.color}30, ${project.color}15)`,
-                    border: `1px solid ${project.color}30`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Code2 size={16} color={project.color} />
-                </div>
-
-                {/* Name + updated */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    className="truncate"
+            {recentProjectsList.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <Code2 size={28} style={{ margin: "0 auto 8px", color: "var(--text-muted)", opacity: 0.4 }} />
+                <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>No projects yet.</p>
+                <Link href="/admin/projects" style={{ fontSize: "0.8rem", color: "var(--brand-primary)", textDecoration: "none" }}>Add your first project →</Link>
+              </div>
+            ) : (
+              recentProjectsList.map((project, i) => {
+                const color = projectColors[i % projectColors.length];
+                return (
+                  <div
+                    key={project.id}
+                    className="flex items-center gap-3 px-5 py-3 transition-colors"
                     style={{
-                      fontFamily: "var(--font-outfit, sans-serif)",
-                      fontWeight: 600,
-                      fontSize: "0.875rem",
-                      color: "var(--text-primary)",
+                      borderBottom: i < recentProjectsList.length - 1 ? "1px solid var(--admin-border)" : "none",
+                      cursor: "default",
                     }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--admin-hover)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
                   >
-                    {project.name}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-outfit, sans-serif)",
-                      fontWeight: 400,
-                      fontSize: "0.75rem",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    Updated {project.updated}
-                  </p>
-                </div>
-
-                {/* Status badge */}
-                <StatusBadge status={project.status} />
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {[
-                    { Icon: Pencil, title: "Edit", danger: false },
-                    { Icon: Eye, title: "View", danger: false },
-                    { Icon: Trash2, title: "Delete", danger: true },
-                  ].map(({ Icon, title, danger }) => (
-                    <button
-                      key={title}
-                      title={title}
-                      className="flex items-center justify-center rounded-md transition-all duration-150"
+                    {/* Thumbnail */}
+                    <div
+                      className="rounded-md flex-shrink-0"
                       style={{
-                        width: 28,
-                        height: 28,
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)";
-                        (e.currentTarget as HTMLElement).style.color = danger ? "var(--red)" : "var(--text-primary)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = "transparent";
-                        (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                        width: 48,
+                        height: 38,
+                        background: `linear-gradient(135deg, ${color}30, ${color}15)`,
+                        border: `1px solid ${color}30`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      <Icon size={14} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+                      <Code2 size={16} color={color} />
+                    </div>
+
+                    {/* Name + updated */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        className="truncate"
+                        style={{
+                          fontFamily: "var(--font-outfit, sans-serif)",
+                          fontWeight: 600,
+                          fontSize: "0.875rem",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {project.title}
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "var(--font-outfit, sans-serif)",
+                          fontWeight: 400,
+                          fontSize: "0.75rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        Updated {timeAgo(project.updated_at)}
+                      </p>
+                    </div>
+
+                    {/* Status badge */}
+                    <StatusBadge status={projectStatus(project.status)} />
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        title="Edit"
+                        onClick={() => router.push("/admin/projects")}
+                        className="flex items-center justify-center rounded-md transition-all duration-150"
+                        style={{ width: 28, height: 28, background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      {project.live_url ? (
+                        <a
+                          href={project.live_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View Live"
+                          className="flex items-center justify-center rounded-md transition-all duration-150"
+                          style={{ width: 28, height: 28, background: "transparent", color: "var(--text-muted)", textDecoration: "none" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+                        >
+                          <Eye size={14} />
+                        </a>
+                      ) : (
+                        <button disabled title="No live URL" style={{ width: 28, height: 28, background: "transparent", border: "none", color: "var(--text-muted)", cursor: "not-allowed", opacity: 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Eye size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </SectionCard>
 

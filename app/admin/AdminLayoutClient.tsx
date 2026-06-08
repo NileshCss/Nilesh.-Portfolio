@@ -151,6 +151,7 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
           userEmail={userEmail} 
           isMobile={isMobile}
           onMenuToggle={() => setCollapsed(!collapsed)}
+          onLogout={handleLogout}
         />
         <main style={{ padding: isMobile ? "16px 16px" : "24px 32px", flex: 1 }}>
           {children}

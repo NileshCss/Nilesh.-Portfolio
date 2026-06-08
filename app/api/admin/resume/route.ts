@@ -76,6 +76,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to update database: " + updateError.message }, { status: 500 });
     }
 
+    // 5. Insert new version record into resume_versions
+    try {
+      const { count } = await adminSupabase
+        .from("resume_versions")
+        .select("*", { count: "exact", head: true });
+
+      const versionCount = count ?? 0;
+      const versionLabel = `v1.${versionCount + 1}`;
+      const kb = Math.round(file.size / 1024);
+      const sizeStr = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+
+      await adminSupabase.from("resume_versions").insert({
+        file_name: file.name,
+        file_url: publicUrl,
+        file_size: sizeStr,
+        version_label: versionLabel,
+      });
+    } catch (dbErr) {
+      console.warn("Failed to insert version history record:", dbErr);
+    }
+
     return NextResponse.json({ success: true, url: publicUrl, fileName: file.name, size: file.size });
   } catch (error: any) {
     console.error("Resume upload error:", error);
