@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
-    const adminSupabase = createAdminClient();
-    
-    // Check authentication
-    const { data: { user } } = await adminSupabase.auth.getUser();
+    // Verify session via cookie-based client
+    const serverSupabase = await createServerSupabaseClient();
+    const { data: { user } } = await serverSupabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const adminSupabase = createAdminClient();
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -106,13 +108,14 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    const adminSupabase = createAdminClient();
-    
-    // Check authentication
-    const { data: { user } } = await adminSupabase.auth.getUser();
+    // Verify session via cookie-based client
+    const serverSupabase = await createServerSupabaseClient();
+    const { data: { user } } = await serverSupabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const adminSupabase = createAdminClient();
 
     // Fetch personal_info ID
     const { data: personalData, error: fetchError } = await adminSupabase
