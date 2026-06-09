@@ -15,9 +15,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { date, time, timezone, name, email, type } = schema.parse(body);
 
+    // Always log the booking — visible in Vercel/server logs even if email fails
+    console.log("📅 MEETING BOOKING RECEIVED:", {
+      date, time, timezone, name: name || "—", email: email || "—", type,
+    });
+
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      console.warn("RESEND_API_KEY not set — meeting email not sent in dev mode");
+      console.warn("RESEND_API_KEY not set — email skipped, booking logged above");
+      // Still return success so the user doesn't get an error
       return NextResponse.json({ success: true, dev: true }, { status: 200 });
     }
 
@@ -34,6 +40,8 @@ export async function POST(request: Request) {
       day: "numeric",
     });
 
+    // CONTACT_EMAIL must be the email you registered with at resend.com
+    // when using the onboarding@resend.dev sandbox sender.
     const toEmail =
       process.env.CONTACT_EMAIL ||
       process.env.ADMIN_EMAIL ||
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
       <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f5f5;border-radius:12px;overflow:hidden;">
         <div style="padding:32px;background:linear-gradient(135deg,#6366f1 0%,#7c3aed 100%);">
           <h1 style="margin:0;font-size:20px;font-weight:700;color:white;">📅 New Meeting Scheduled!</h1>
-          <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7);font-family:monospace;">nks.dev → Schedule a Video Call</p>
+          <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7);font-family:monospace;">Portfolio → Schedule a Video Call</p>
         </div>
         <div style="padding:32px;">
           <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
@@ -75,11 +83,12 @@ export async function POST(request: Request) {
               <td style="padding:8px 0;"><a href="mailto:${email}" style="color:#6366f1;font-size:14px;">${email}</a></td>
             </tr>` : ""}
           </table>
-          <p style="font-size:13px;color:#71717a;margin:0;">Make sure to send the meeting invite to the person who booked this slot.</p>
+          <p style="font-size:13px;color:#71717a;margin:0;">Send the meeting invite to the person who booked this slot.</p>
         </div>
       </div>
     `;
 
+    // Best-effort email — if Resend fails, booking is still logged above
     const { error: ownerError } = await resend.emails.send({
       from: "Portfolio Calendar <onboarding@resend.dev>",
       to: toEmail,
@@ -88,14 +97,14 @@ export async function POST(request: Request) {
     });
 
     if (ownerError) {
-      console.error("Resend error (owner notification):", ownerError);
-      return NextResponse.json(
-        { error: "Failed to send email", details: ownerError },
-        { status: 500 }
-      );
+      // Log the Resend error but DO NOT return 500 — the booking was already logged above
+      console.error("Resend failed to send owner email:", ownerError);
+      console.error("Check: CONTACT_EMAIL must match your Resend account email (resend.com dashboard)");
+      // Still return success to the visitor — don't break their experience
+      return NextResponse.json({ success: true, emailError: true }, { status: 200 });
     }
 
-    // 2️⃣  Also send a confirmation to the guest if their email was provided
+    // 2️⃣  Best-effort guest confirmation (sandbox only delivers to the Resend account email)
     if (email) {
       const guestHtml = `
         <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f5f5;border-radius:12px;overflow:hidden;">
@@ -131,13 +140,13 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      // Best-effort: don't fail the whole request if guest email fails
+      // Best-effort — sandbox sender can only deliver to the Resend account email
       await resend.emails.send({
         from: "Nilesh Kumar Singh <onboarding@resend.dev>",
         to: email,
         subject: `✅ Meeting Confirmed: ${meetingLabel} on ${dateString} at ${time}`,
         html: guestHtml,
-      }).catch(e => console.warn("Guest confirmation email failed:", e));
+      }).catch(e => console.warn("Guest confirmation skipped (sandbox restriction):", e));
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
