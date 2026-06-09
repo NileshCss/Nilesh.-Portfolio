@@ -37,10 +37,15 @@ export async function POST(request: Request) {
 
     const resend = new Resend(apiKey);
 
+    // CONTACT_EMAIL = where you want to receive messages.
+    // Must be the email you verified/registered with at resend.com
+    // when using the sandbox `onboarding@resend.dev` sender.
+    const toEmail = process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL || "rajputnileshsingh25@gmail.com";
+
     const { error } = await resend.emails.send({
       from: "Portfolio Contact <onboarding@resend.dev>",
-      to: "kmanjusha422@gmail.com",
-      reply_to: email,
+      to: toEmail,
+      replyTo: email,
       subject: `New Portfolio Message from ${name}`,
       html: `
         <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #f5f5f5; border-radius: 12px; overflow: hidden;">

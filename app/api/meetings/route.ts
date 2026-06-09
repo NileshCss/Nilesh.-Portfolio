@@ -1,0 +1,148 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const schema = z.object({
+  date: z.string(),       // ISO date string: "YYYY-MM-DD"
+  time: z.string(),       // e.g. "10:00 AM"
+  timezone: z.string(),   // e.g. "Asia/Kolkata"
+  name: z.string().optional(),
+  email: z.string().email().optional(),
+  type: z.string().optional(),
+});
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { date, time, timezone, name, email, type } = schema.parse(body);
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set — meeting email not sent in dev mode");
+      return NextResponse.json({ success: true, dev: true }, { status: 200 });
+    }
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+
+    // Parse the date for a nice display string
+    const [year, month, day] = date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    const dateString = dateObj.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const toEmail =
+      process.env.CONTACT_EMAIL ||
+      process.env.ADMIN_EMAIL ||
+      "rajputnileshsingh25@gmail.com";
+
+    const meetingLabel = type === "video_call_30min" ? "30-Minute Video Call" : "Meeting";
+
+    // 1️⃣  Notify the portfolio owner
+    const ownerHtml = `
+      <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+        <div style="padding:32px;background:linear-gradient(135deg,#6366f1 0%,#7c3aed 100%);">
+          <h1 style="margin:0;font-size:20px;font-weight:700;color:white;">📅 New Meeting Scheduled!</h1>
+          <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7);font-family:monospace;">nks.dev → Schedule a Video Call</p>
+        </div>
+        <div style="padding:32px;">
+          <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+            <tr>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);color:#71717a;font-size:12px;font-family:monospace;width:100px;">DATE</td>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:14px;color:#f5f5f5;">${dateString}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);color:#71717a;font-size:12px;font-family:monospace;">TIME</td>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:14px;color:#f5f5f5;">${time}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);color:#71717a;font-size:12px;font-family:monospace;">TIMEZONE</td>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:14px;color:#f5f5f5;font-family:monospace;">${timezone}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);color:#71717a;font-size:12px;font-family:monospace;">TYPE</td>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:14px;color:#f5f5f5;">${meetingLabel}</td>
+            </tr>
+            ${name ? `<tr>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);color:#71717a;font-size:12px;font-family:monospace;">NAME</td>
+              <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:14px;color:#f5f5f5;">${name}</td>
+            </tr>` : ""}
+            ${email ? `<tr>
+              <td style="padding:8px 0;color:#71717a;font-size:12px;font-family:monospace;">EMAIL</td>
+              <td style="padding:8px 0;"><a href="mailto:${email}" style="color:#6366f1;font-size:14px;">${email}</a></td>
+            </tr>` : ""}
+          </table>
+          <p style="font-size:13px;color:#71717a;margin:0;">Make sure to send the meeting invite to the person who booked this slot.</p>
+        </div>
+      </div>
+    `;
+
+    const { error: ownerError } = await resend.emails.send({
+      from: "Portfolio Calendar <onboarding@resend.dev>",
+      to: toEmail,
+      subject: `📅 Meeting Booked: ${meetingLabel} on ${dateString} at ${time}`,
+      html: ownerHtml,
+    });
+
+    if (ownerError) {
+      console.error("Resend error (owner notification):", ownerError);
+      return NextResponse.json(
+        { error: "Failed to send email", details: ownerError },
+        { status: 500 }
+      );
+    }
+
+    // 2️⃣  Also send a confirmation to the guest if their email was provided
+    if (email) {
+      const guestHtml = `
+        <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+          <div style="padding:32px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);">
+            <h1 style="margin:0;font-size:20px;font-weight:700;color:white;">✅ Meeting Confirmed!</h1>
+            <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7);">Your ${meetingLabel} with Nilesh Kumar Singh</p>
+          </div>
+          <div style="padding:32px;">
+            <p style="font-size:15px;color:#d4d4d8;margin:0 0 24px;">Hi${name ? ` ${name}` : ""},</p>
+            <p style="font-size:14px;color:#a1a1aa;line-height:1.6;margin:0 0 24px;">
+              Your meeting has been confirmed. Here are the details:
+            </p>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin-bottom:24px;">
+              <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;width:100px;">DATE</td>
+                  <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">${dateString}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">TIME</td>
+                  <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">${time} (${timezone})</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">TYPE</td>
+                  <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">${meetingLabel}</td>
+                </tr>
+              </table>
+            </div>
+            <p style="font-size:13px;color:#71717a;margin:0;">
+              A calendar invite will follow. If you need to reschedule, reply to this email.
+            </p>
+          </div>
+        </div>
+      `;
+
+      // Best-effort: don't fail the whole request if guest email fails
+      await resend.emails.send({
+        from: "Nilesh Kumar Singh <onboarding@resend.dev>",
+        to: email,
+        subject: `✅ Meeting Confirmed: ${meetingLabel} on ${dateString} at ${time}`,
+        html: guestHtml,
+      }).catch(e => console.warn("Guest confirmation email failed:", e));
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (err) {
+    console.error("Meetings API error:", err);
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+}

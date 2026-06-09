@@ -24,6 +24,8 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
   const [isLoading, setIsLoading]     = useState(false);
   const [isSuccess, setIsSuccess]     = useState(false);
   const [countdown, setCountdown]     = useState(4);
+  const [guestName, setGuestName]     = useState("");
+  const [guestEmail, setGuestEmail]   = useState("");
   const [timezone] = useState(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -62,18 +64,19 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
     if (!selectedDay || !selectedTime) return;
     setIsLoading(true);
     try {
-      // Simulate API call delay to show loading spinner
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      // await fetch('/api/meetings', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     date: new Date(calYear, calMonth, selectedDay).toISOString().split('T')[0],
-      //     time: selectedTime,
-      //     timezone,
-      //     type: 'video_call_30min'
-      //   })
-      // });
+      const res = await fetch('/api/meetings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: new Date(calYear, calMonth, selectedDay).toISOString().split('T')[0],
+          time: selectedTime,
+          timezone,
+          type: 'video_call_30min',
+          ...(guestName.trim()  && { name:  guestName.trim()  }),
+          ...(guestEmail.trim() && { email: guestEmail.trim() }),
+        })
+      });
+      if (!res.ok) throw new Error('Failed');
       setIsLoading(false);
       setIsSuccess(true);
     } catch {
@@ -693,6 +696,35 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                   <div className="meeting-summary">
                     📅 {getSummary()}
                   </div>
+
+                  {/* Optional guest details for confirmation email */}
+                  <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Your name (optional)"
+                      value={guestName}
+                      onChange={e => setGuestName(e.target.value)}
+                      style={{
+                        width: '100%', padding: '9px 12px', borderRadius: '8px',
+                        border: '1px solid #E2E8F0', fontSize: '0.85rem',
+                        fontFamily: "'Outfit', sans-serif", outline: 'none',
+                        color: '#0F172A', background: '#fff', boxSizing: 'border-box',
+                      }}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Your email — get a confirmation (optional)"
+                      value={guestEmail}
+                      onChange={e => setGuestEmail(e.target.value)}
+                      style={{
+                        width: '100%', padding: '9px 12px', borderRadius: '8px',
+                        border: '1px solid #E2E8F0', fontSize: '0.85rem',
+                        fontFamily: "'Outfit', sans-serif", outline: 'none',
+                        color: '#0F172A', background: '#fff', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+
                   <button 
                     className="confirm-btn" 
                     onClick={handleConfirm}
@@ -744,7 +776,9 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                 <strong>{getSummary()}</strong>
               </div>
               <div className="success-note">
-                A calendar invite will be sent to your email.
+                {guestEmail
+                  ? `A confirmation has been sent to ${guestEmail}.`
+                  : "Nilesh will be in touch to confirm your time slot."}
               </div>
               <div className="success-countdown">
                 Closing in {countdown}s...
