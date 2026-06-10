@@ -400,7 +400,7 @@ export default function ContactMessagesPage() {
           {selectedIds.length > 0 && (
             <button
               onClick={() => setBulkDeleteConfirm(true)}
-              className="py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-650 dark:text-red-400 font-semibold text-sm rounded-xl transition-all border border-red-200 dark:border-red-800"
+              className="py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold text-sm rounded-xl transition-all border border-red-200 dark:border-red-800"
             >
               Delete Selected ({selectedIds.length})
             </button>
@@ -523,7 +523,7 @@ export default function ContactMessagesPage() {
 
                         <button 
                           onClick={() => setDeleteTargetId(item.id)}
-                          className="px-2.5 py-1.5 text-red-650 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
                         >
                           <Trash2 className="w-3 h-3" /> Delete
                         </button>
@@ -733,7 +733,7 @@ export default function ContactMessagesPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button 
                 onClick={handleDeleteMessage}
-                className="px-4 py-2 bg-red-655 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 Delete
               </button>
@@ -759,7 +759,7 @@ export default function ContactMessagesPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button 
                 onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-655 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 Yes, Delete All
               </button>
