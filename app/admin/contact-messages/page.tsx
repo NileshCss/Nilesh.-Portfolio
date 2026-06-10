@@ -10,59 +10,14 @@ interface Message {
   name: string;
   email: string;
   message: string;
+  subject?: string;
+  type?: 'message' | 'booking';
+  status?: 'Unread' | 'Read' | 'Confirmed';
+  confirmed_at?: string;
+  booking_date?: string;
+  booking_time?: string;
   is_read: boolean;
   created_at: string;
-}
-
-// --- Metadata Wrapper Parser & Serializer ---
-interface ParsedMessage {
-  type: 'message' | 'booking';
-  subject: string;
-  body: string;
-  status: 'Unread' | 'Read' | 'Confirmed';
-  confirmed_at?: string;
-  bookingDate?: string;
-  bookingTime?: string;
-}
-
-function parseMessageText(rawText: string, isRead: boolean): ParsedMessage {
-  if (rawText && rawText.startsWith("__METADATA__:")) {
-    try {
-      const firstNewline = rawText.indexOf("\n");
-      const jsonStr = rawText.substring("__METADATA__:".length, firstNewline);
-      const meta = JSON.parse(jsonStr);
-      const body = rawText.substring(firstNewline + 1);
-      return {
-        type: meta.type || 'message',
-        subject: meta.subject || '',
-        body: body,
-        status: meta.status || (isRead ? 'Read' : 'Unread'),
-        confirmed_at: meta.confirmed_at,
-        bookingDate: meta.bookingDate,
-        bookingTime: meta.bookingTime,
-      };
-    } catch (e) {
-      console.error("Failed to parse message metadata:", e);
-    }
-  }
-  return {
-    type: 'message',
-    subject: 'Contact Form Message',
-    body: rawText,
-    status: isRead ? 'Read' : 'Unread'
-  };
-}
-
-function serializeMessageText(parsed: ParsedMessage): string {
-  const metadata = {
-    type: parsed.type,
-    subject: parsed.subject,
-    status: parsed.status,
-    confirmed_at: parsed.confirmed_at,
-    bookingDate: parsed.bookingDate,
-    bookingTime: parsed.bookingTime,
-  };
-  return `__METADATA__:${JSON.stringify(metadata)}\n${parsed.body}`;
 }
 
 export default function ContactMessagesPage() {
@@ -118,11 +73,10 @@ export default function ContactMessagesPage() {
   const markAsRead = async (id: string) => {
     const targetMsg = messages.find(m => m.id === id);
     if (!targetMsg) return;
-
-    const parsed = parseMessageText(targetMsg.message, targetMsg.is_read);
     
-    // If it's already confirmed, don't revert status to Read
-    if (parsed.status === 'Confirmed') {
+    // Confirmed bookings maintain Confirmed status
+    const dbStatus = (targetMsg.status || 'Unread');
+    if (dbStatus === 'Confirmed') {
       const { error } = await supabase
         .from("contact_messages")
         .update({ is_read: true })
@@ -133,16 +87,10 @@ export default function ContactMessagesPage() {
       return;
     }
 
-    const updated = {
-      ...parsed,
-      status: 'Read' as const
-    };
-    const newRawText = serializeMessageText(updated);
-
     const { error } = await supabase
       .from("contact_messages")
       .update({ 
-        message: newRawText,
+        status: 'Read',
         is_read: true 
       })
       .eq("id", id);
@@ -150,7 +98,7 @@ export default function ContactMessagesPage() {
     if (error) {
       console.warn("Failed to mark message as read in DB:", error.message);
     } else {
-      setMessages(prev => prev.map(m => m.id === id ? { ...m, message: newRawText, is_read: true } : m));
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'Read', is_read: true } : m));
     }
   };
 
@@ -176,9 +124,8 @@ export default function ContactMessagesPage() {
     // Simulate sending reply
     setReplySuccess(true);
     
-    const parsed = parseMessageText(activeReplyMessage.message, activeReplyMessage.is_read);
-    const subject = parsed.subject ? `Re: ${parsed.subject}` : "Re: Your message";
-    const body = `${replyText}\n\n---\nOriginal message:\n${parsed.body}`;
+    const subject = activeReplyMessage.subject ? `Re: ${activeReplyMessage.subject}` : "Re: Your message";
+    const body = `${replyText}\n\n---\nOriginal message:\n${activeReplyMessage.message}`;
     
     setTimeout(() => {
       window.location.href = `mailto:${activeReplyMessage.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -191,7 +138,6 @@ export default function ContactMessagesPage() {
   // --- Approve / Confirm Booking Action ---
   const handleApproveBooking = async (msg: Message) => {
     setApprovingId(msg.id);
-    const parsed = parseMessageText(msg.message, msg.is_read);
     const now = new Date();
     
     // Formatting date and time
@@ -206,18 +152,12 @@ export default function ContactMessagesPage() {
     });
     const confirmedAtStr = `${dateStr} at ${timeStr}`;
 
-    const updated = {
-      ...parsed,
-      status: 'Confirmed' as const,
-      confirmed_at: confirmedAtStr
-    };
-    const newRawText = serializeMessageText(updated);
-
     // Update in Supabase
     const { error: dbError } = await supabase
       .from("contact_messages")
       .update({
-        message: newRawText,
+        status: 'Confirmed',
+        confirmed_at: confirmedAtStr,
         is_read: true
       })
       .eq("id", msg.id);
@@ -236,8 +176,8 @@ export default function ContactMessagesPage() {
         body: JSON.stringify({
           email: msg.email,
           name: msg.name,
-          date: parsed.bookingDate || "Unknown Date",
-          time: parsed.bookingTime || "Unknown Time"
+          date: msg.booking_date || "Unknown Date",
+          time: msg.booking_time || "Unknown Time"
         })
       });
 
@@ -254,9 +194,20 @@ export default function ContactMessagesPage() {
     }
 
     // Refresh state locally
-    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, message: newRawText, is_read: true } : m));
+    setMessages(prev => prev.map(m => m.id === msg.id ? { 
+      ...m, 
+      status: 'Confirmed', 
+      confirmed_at: confirmedAtStr, 
+      is_read: true 
+    } : m));
+    
     if (activeViewMessage?.id === msg.id) {
-      setActiveViewMessage(prev => prev ? { ...prev, message: newRawText, is_read: true } : null);
+      setActiveViewMessage(prev => prev ? { 
+        ...prev, 
+        status: 'Confirmed', 
+        confirmed_at: confirmedAtStr, 
+        is_read: true 
+      } : null);
     }
     setApprovingId(null);
   };
@@ -302,15 +253,23 @@ export default function ContactMessagesPage() {
     setBulkDeleteConfirm(false);
   };
 
+  // --- Normalizer Helper for DB values ---
+  const normalizeMessage = (msg: Message) => {
+    const type = msg.type || 'message';
+    const status = msg.status || (msg.is_read ? 'Read' : 'Unread');
+    const subject = msg.subject || 'Contact Form Message';
+    
+    return {
+      ...msg,
+      type,
+      status,
+      subject
+    };
+  };
+
   // --- Computations ---
   const processedMessages = useMemo(() => {
-    return messages.map(m => {
-      const parsed = parseMessageText(m.message, m.is_read);
-      return {
-        ...m,
-        parsed
-      };
-    });
+    return messages.map(normalizeMessage);
   }, [messages]);
 
   const filteredMessages = useMemo(() => {
@@ -319,14 +278,14 @@ export default function ContactMessagesPage() {
       const matchesSearch = 
         item.name.toLowerCase().includes(q) ||
         item.email.toLowerCase().includes(q) ||
-        item.parsed.subject.toLowerCase().includes(q) ||
-        item.parsed.body.toLowerCase().includes(q);
+        item.subject.toLowerCase().includes(q) ||
+        item.message.toLowerCase().includes(q);
       
       const matchesFilter = 
         statusFilter === 'All' ? true :
-        statusFilter === 'Unread' ? item.parsed.status === 'Unread' :
-        statusFilter === 'Read' ? item.parsed.status === 'Read' :
-        item.parsed.status === 'Confirmed';
+        statusFilter === 'Unread' ? item.status === 'Unread' :
+        statusFilter === 'Read' ? item.status === 'Read' :
+        item.status === 'Confirmed';
 
       return matchesSearch && matchesFilter;
     });
@@ -334,7 +293,7 @@ export default function ContactMessagesPage() {
 
   const stats = useMemo(() => {
     const total = processedMessages.length;
-    const unread = processedMessages.filter(m => m.parsed.status === 'Unread').length;
+    const unread = processedMessages.filter(m => m.status === 'Unread').length;
     return { total, unread };
   }, [processedMessages]);
 
@@ -364,11 +323,11 @@ export default function ContactMessagesPage() {
     const rows = filteredMessages.map(item => [
       `"${item.name.replace(/"/g, '""')}"`,
       `"${item.email.replace(/"/g, '""')}"`,
-      `"${item.parsed.subject.replace(/"/g, '""')}"`,
-      `"${item.parsed.body.substring(0, 100).replace(/"/g, '""')}..."`,
+      `"${item.subject.replace(/"/g, '""')}"`,
+      `"${item.message.substring(0, 100).replace(/"/g, '""')}..."`,
       formatDate(item.created_at),
-      item.parsed.status,
-      item.parsed.confirmed_at ? `"${item.parsed.confirmed_at}"` : ""
+      item.status,
+      item.confirmed_at ? `"${item.confirmed_at}"` : ""
     ]);
 
     const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -465,7 +424,7 @@ export default function ContactMessagesPage() {
                     type="checkbox"
                     onChange={handleSelectAll}
                     checked={filteredMessages.length > 0 && selectedIds.length === filteredMessages.length}
-                    className="rounded text-blue-600 focus:ring-blue-500 border-slate-350 dark:border-slate-700 w-4 h-4 cursor-pointer"
+                    className="rounded text-blue-600 focus:ring-blue-500 border-slate-355 dark:border-slate-700 w-4 h-4 cursor-pointer"
                   />
                 </th>
                 <th className="px-6 py-4">Sender</th>
@@ -479,15 +438,15 @@ export default function ContactMessagesPage() {
               {filteredMessages.length > 0 ? (
                 filteredMessages.map((item) => {
                   const isChecked = selectedIds.includes(item.id);
-                  const isBooking = item.parsed.type === 'booking';
-                  const isConfirmed = item.parsed.status === 'Confirmed';
+                  const isBooking = item.type === 'booking';
+                  const isConfirmed = item.status === 'Confirmed';
                   
                   return (
                     <tr 
                       key={item.id}
                       onClick={() => handleViewMessage(item)}
                       className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors cursor-pointer ${
-                        item.parsed.status === 'Unread' ? 'bg-blue-50/10 dark:bg-blue-950/5' : ''
+                        item.status === 'Unread' ? 'bg-blue-50/10 dark:bg-blue-950/5' : ''
                       }`}
                     >
                       <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>
@@ -495,7 +454,7 @@ export default function ContactMessagesPage() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleSelectOne(item.id)}
-                          className="rounded text-blue-600 focus:ring-blue-500 border-slate-350 dark:border-slate-700 w-4 h-4 cursor-pointer"
+                          className="rounded text-blue-600 focus:ring-blue-500 border-slate-355 dark:border-slate-700 w-4 h-4 cursor-pointer"
                         />
                       </td>
                       <td className="px-6 py-4">
@@ -503,13 +462,13 @@ export default function ContactMessagesPage() {
                         <div className="text-xs text-slate-400 dark:text-slate-500 select-all">{item.email}</div>
                       </td>
                       <td className="px-6 py-4 max-w-xs md:max-w-md">
-                        <div className={`truncate text-slate-900 dark:text-slate-100 ${item.parsed.status === 'Unread' ? 'font-bold' : 'font-medium'}`}>
-                          {item.parsed.subject}
+                        <div className={`truncate text-slate-900 dark:text-slate-100 ${item.status === 'Unread' ? 'font-bold' : 'font-medium'}`}>
+                          {item.subject}
                         </div>
-                        <div className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{item.parsed.body}</div>
-                        {isConfirmed && item.parsed.confirmed_at && (
-                          <div className="text-[11px] text-emerald-650 dark:text-emerald-450 font-semibold flex items-center gap-1 mt-1">
-                            <Check className="w-3.5 h-3.5" /> Confirmed on {item.parsed.confirmed_at}
+                        <div className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{item.message}</div>
+                        {isConfirmed && item.confirmed_at && (
+                          <div className="text-[11px] text-emerald-650 dark:text-emerald-455 font-semibold flex items-center gap-1 mt-1">
+                            <Check className="w-3.5 h-3.5" /> Confirmed on {item.confirmed_at}
                           </div>
                         )}
                       </td>
@@ -521,7 +480,7 @@ export default function ContactMessagesPage() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
                             Confirmed
                           </span>
-                        ) : item.parsed.status === 'Unread' ? (
+                        ) : item.status === 'Unread' ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-55 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                             Unread
                           </span>
@@ -534,14 +493,14 @@ export default function ContactMessagesPage() {
                       <td className="px-6 py-4 text-right whitespace-nowrap text-xs font-bold space-x-1" onClick={e => e.stopPropagation()}>
                         <button 
                           onClick={() => handleViewMessage(item)}
-                          className="px-2 py-1.5 text-blue-650 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 text-blue-650 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
                         >
                           <Eye className="w-3 h-3" /> View
                         </button>
                         
                         <button 
                           onClick={() => handleReplyMessage(item)}
-                          className="px-2 py-1.5 text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg transition-colors inline-flex items-center gap-1"
                         >
                           <Reply className="w-3 h-3" /> Reply
                         </button>
@@ -564,7 +523,7 @@ export default function ContactMessagesPage() {
 
                         <button 
                           onClick={() => setDeleteTargetId(item.id)}
-                          className="px-2 py-1.5 text-red-650 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 text-red-650 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
                         >
                           <Trash2 className="w-3 h-3" /> Delete
                         </button>
@@ -591,9 +550,8 @@ export default function ContactMessagesPage() {
 
       {/* 1. View Message Modal */}
       {activeViewMessage && (() => {
-        const parsed = parseMessageText(activeViewMessage.message, activeViewMessage.is_read);
-        const isBooking = parsed.type === 'booking';
-        const isConfirmed = parsed.status === 'Confirmed';
+        const isBooking = activeViewMessage.type === 'booking';
+        const isConfirmed = activeViewMessage.status === 'Confirmed';
         
         return (
           <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -626,27 +584,27 @@ export default function ContactMessagesPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Date Received</h3>
                     <p className="text-sm text-slate-700 dark:text-slate-350 font-medium">{formatDate(activeViewMessage.created_at)}</p>
                   </div>
-                  {isBooking && parsed.bookingTime && (
+                  {isBooking && activeViewMessage.booking_time && (
                     <div className="flex-1">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Requested Booking Time</h3>
-                      <p className="text-sm text-slate-700 dark:text-slate-350 font-medium">{parsed.bookingDate} at {parsed.bookingTime}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-350 font-medium">{activeViewMessage.booking_date} at {activeViewMessage.booking_time}</p>
                     </div>
                   )}
                 </div>
 
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Subject</h3>
-                  <p className="font-bold text-slate-900 dark:text-white text-base mt-0.5">{parsed.subject}</p>
+                  <p className="font-bold text-slate-900 dark:text-white text-base mt-0.5">{activeViewMessage.subject}</p>
                 </div>
 
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Message / Details</h3>
                   <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                    {parsed.body}
+                    {activeViewMessage.message}
                   </div>
-                  {isConfirmed && parsed.confirmed_at && (
+                  {isConfirmed && activeViewMessage.confirmed_at && (
                     <div className="text-[11px] text-emerald-650 dark:text-emerald-450 font-semibold flex items-center gap-1 mt-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 p-2.5 rounded-lg">
-                      <CheckCircle className="w-4 h-4 text-emerald-55" /> Confirmed on {parsed.confirmed_at}
+                      <CheckCircle className="w-4 h-4 text-emerald-55" /> Confirmed on {activeViewMessage.confirmed_at}
                     </div>
                   )}
                 </div>
@@ -684,7 +642,7 @@ export default function ContactMessagesPage() {
                 </button>
                 <button 
                   onClick={() => setActiveViewMessage(null)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-855 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
                 >
                   Close
                 </button>
@@ -695,77 +653,74 @@ export default function ContactMessagesPage() {
       })()}
 
       {/* 2. Reply Modal */}
-      {activeReplyMessage && (() => {
-        const parsed = parseMessageText(activeReplyMessage.message, activeReplyMessage.is_read);
-        return (
-          <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-            <form onSubmit={handleSendReply} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-scale-up">
-              <div className="bg-slate-50 dark:bg-slate-800/60 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">↩ Send Reply</h3>
-                <button 
-                  type="button"
-                  onClick={() => setActiveReplyMessage(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg font-bold p-1 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+      {activeReplyMessage && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <form onSubmit={handleSendReply} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-scale-up">
+            <div className="bg-slate-50 dark:bg-slate-800/60 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">↩ Send Reply</h3>
+              <button 
+                type="button"
+                onClick={() => setActiveReplyMessage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg font-bold p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">To</label>
+                <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-655 dark:text-slate-300 text-sm select-all font-mono">
+                  {activeReplyMessage.name} &lt;{activeReplyMessage.email}&gt;
+                </div>
               </div>
 
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">To</label>
-                  <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-650 dark:text-slate-300 text-sm select-all font-mono">
-                    {activeReplyMessage.name} &lt;{activeReplyMessage.email}&gt;
-                  </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Subject</label>
+                <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-655 dark:text-slate-300 text-sm">
+                  Re: {activeReplyMessage.subject}
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Subject</label>
-                  <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-650 dark:text-slate-300 text-sm">
-                    Re: {parsed.subject}
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="replyText" className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Your Message</label>
-                  <textarea
-                    id="replyText"
-                    rows={5}
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    placeholder="Type your response email here..."
-                    required
-                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  />
-                </div>
-
-                {replySuccess && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900 text-emerald-800 dark:text-emerald-400 text-xs px-4 py-2.5 rounded-lg text-center font-medium flex items-center justify-center gap-2">
-                    <Check className="w-4 h-4" /> Generating mail link...
-                  </div>
-                )}
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button 
-                  type="submit"
-                  disabled={replySuccess}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20"
-                >
-                  Send Reply
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setActiveReplyMessage(null)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
-                >
-                  Cancel
-                </button>
+              <div>
+                <label htmlFor="replyText" className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Your Message</label>
+                <textarea
+                  id="replyText"
+                  rows={5}
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  placeholder="Type your response email here..."
+                  required
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                />
               </div>
-            </form>
-          </div>
-        );
-      })()}
+
+              {replySuccess && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900 text-emerald-800 dark:text-emerald-400 text-xs px-4 py-2.5 rounded-lg text-center font-medium flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" /> Generating mail link...
+                </div>
+              )}
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button 
+                type="submit"
+                disabled={replySuccess}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20"
+              >
+                Send Reply
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveReplyMessage(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-855 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* 3. Delete Confirmation Modal */}
       {deleteTargetId !== null && (
@@ -778,13 +733,13 @@ export default function ContactMessagesPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button 
                 onClick={handleDeleteMessage}
-                className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+                className="px-4 py-2 bg-red-655 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 Delete
               </button>
               <button 
                 onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+                className="px-4 py-2 border border-slate-200 dark:border-slate-855 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
               >
                 Cancel
               </button>
@@ -796,7 +751,7 @@ export default function ContactMessagesPage() {
       {/* 4. Bulk Delete Confirmation Modal */}
       {bulkDeleteConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-800 max-w-sm w-full p-6 space-y-4 animate-scale-up">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-155 dark:border-slate-800 max-w-sm w-full p-6 space-y-4 animate-scale-up">
             <h3 className="font-bold text-slate-900 dark:text-white text-lg">Bulk Delete</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
               Are you sure you want to permanently delete the <span className="font-bold text-slate-900 dark:text-white">{selectedIds.length}</span> selected messages?
@@ -804,13 +759,13 @@ export default function ContactMessagesPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button 
                 onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+                className="px-4 py-2 bg-red-655 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
               >
                 Yes, Delete All
               </button>
               <button 
                 onClick={() => setBulkDeleteConfirm(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+                className="px-4 py-2 border border-slate-200 dark:border-slate-855 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
               >
                 Cancel
               </button>

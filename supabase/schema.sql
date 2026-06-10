@@ -100,6 +100,12 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   message TEXT NOT NULL,
+  subject TEXT,
+  type TEXT DEFAULT 'message',
+  status TEXT DEFAULT 'unread',
+  confirmed_at TEXT,
+  booking_date TEXT,
+  booking_time TEXT,
   is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
