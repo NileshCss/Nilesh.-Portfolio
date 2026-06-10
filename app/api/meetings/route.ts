@@ -5,8 +5,8 @@ const schema = z.object({
   date: z.string(),       // ISO date string: "YYYY-MM-DD"
   time: z.string(),       // e.g. "10:00 AM"
   timezone: z.string(),   // e.g. "Asia/Kolkata"
-  name: z.string().optional(),
-  email: z.string().email().optional(),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
   type: z.string().optional(),
 });
 

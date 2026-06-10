@@ -72,8 +72,8 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           time: selectedTime,
           timezone,
           type: 'video_call_30min',
-          ...(guestName.trim()  && { name:  guestName.trim()  }),
-          ...(guestEmail.trim() && { email: guestEmail.trim() }),
+          name: guestName.trim(),
+          email: guestEmail.trim(),
         })
       });
       if (!res.ok) throw new Error('Failed');
@@ -701,9 +701,10 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                   <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <input
                       type="text"
-                      placeholder="Your name (optional)"
+                      placeholder="Your name (required)"
                       value={guestName}
                       onChange={e => setGuestName(e.target.value)}
+                      required
                       style={{
                         width: '100%', padding: '9px 12px', borderRadius: '8px',
                         border: '1px solid var(--border-default)', fontSize: '0.85rem',
@@ -713,9 +714,10 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                     />
                     <input
                       type="email"
-                      placeholder="Your email — get a confirmation (optional)"
+                      placeholder="Your email — get a confirmation (required)"
                       value={guestEmail}
                       onChange={e => setGuestEmail(e.target.value)}
+                      required
                       style={{
                         width: '100%', padding: '9px 12px', borderRadius: '8px',
                         border: '1px solid var(--border-default)', fontSize: '0.85rem',
@@ -728,7 +730,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                   <button 
                     className="confirm-btn" 
                     onClick={handleConfirm}
-                    disabled={isLoading}
+                    disabled={isLoading || !guestName.trim() || !guestEmail.trim()}
                     aria-label={`Confirm meeting on ${getSummary()}`}
                   >
                     {isLoading ? (
