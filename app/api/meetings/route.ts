@@ -118,7 +118,7 @@ export async function POST(request: Request) {
 
     // Best-effort email — if Resend fails, booking is still logged above
     const { error: ownerError } = await resend.emails.send({
-      from: "Portfolio Calendar <onboarding@resend.dev>",
+      from: "Portfolio Calendar <meetings@nileshrajput.me>",
       to: toEmail,
       subject: `📅 Meeting Booked: ${meetingLabel} on ${dateString} at ${time}`,
       html: ownerHtml,
@@ -168,13 +168,17 @@ export async function POST(request: Request) {
         </div>
       `;
 
-      // Best-effort — sandbox sender can only deliver to the Resend account email
-      await resend.emails.send({
-        from: "Nilesh Kumar Singh <onboarding@resend.dev>",
+      // Best-effort guest email confirmation
+      const { error: guestError } = await resend.emails.send({
+        from: "Nilesh Kumar Singh <meetings@nileshrajput.me>",
         to: email,
         subject: `✅ Meeting Confirmed: ${meetingLabel} on ${dateString} at ${time}`,
         html: guestHtml,
-      }).catch(e => console.warn("Guest confirmation skipped (sandbox restriction):", e));
+      });
+
+      if (guestError) {
+        console.error("Resend failed to send guest confirmation email:", guestError);
+      }
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

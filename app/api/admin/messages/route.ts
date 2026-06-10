@@ -76,17 +76,22 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    await resend.emails.send({
-      from: "Nilesh Kumar Singh <onboarding@resend.dev>",
+    const { error } = await resend.emails.send({
+      from: "Nilesh Kumar Singh <meetings@nileshrajput.me>",
       to: email,
       subject: `Your Meeting is Confirmed – 30 Minute Intro Call with Nilesh Kumar Singh`,
       html: emailHtml,
     });
 
+    if (error) {
+      console.error("Resend API returned an error:", error);
+      return NextResponse.json({ error: error.message || "Failed to send confirmation email" }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Confirmation email failed:", err);
-    return NextResponse.json({ error: "Failed to send confirmation" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Failed to send confirmation" }, { status: 500 });
   }
 }
 
