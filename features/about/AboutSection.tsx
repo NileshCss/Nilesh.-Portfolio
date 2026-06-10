@@ -31,7 +31,7 @@ const quickFacts = [
 
 export function AboutSection({ personalInfo = personal }: { personalInfo?: PersonalInfo }) {
   return (
-    <section id="about" className="py-[72px] bg-white border-t border-slate-200">
+    <section id="about" className="py-[72px] bg-surface border-t border-border-base">
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial="hidden"
@@ -55,14 +55,14 @@ export function AboutSection({ personalInfo = personal }: { personalInfo?: Perso
                 <motion.p
                   key={i}
                   variants={item}
-                  className="text-slate-500 leading-[1.75] text-[0.9875rem]"
+                  className="text-foreground-muted leading-[1.75] text-[0.9875rem]"
                 >
                   {paragraph}
                 </motion.p>
               ))}
 
               <motion.div variants={item} className="pt-4">
-                <p className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">
+                <p className="text-xs font-bold text-foreground-faint mb-3 uppercase tracking-widest">
                   What sets me apart
                 </p>
                 <ul className="space-y-2">
@@ -72,8 +72,8 @@ export function AboutSection({ personalInfo = personal }: { personalInfo?: Perso
                     "End-to-end ownership from architecture to deployment",
                     "Built 5+ production systems independently",
                   ].map((point, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-500">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0" />
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-foreground-muted">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
                       {point}
                     </li>
                   ))}
@@ -86,13 +86,13 @@ export function AboutSection({ personalInfo = personal }: { personalInfo?: Perso
               {quickFacts.map((fact, i) => (
                 <div
                   key={i}
-                  className="group p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-blue-600 hover:-translate-y-[2px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
+                  className="group p-4 rounded-xl border border-border-base bg-muted hover:bg-card hover:border-blue-600 dark:hover:border-blue-500 hover:-translate-y-[2px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
                 >
-                  <fact.icon size={16} className="text-blue-600 mb-2" />
-                  <p className="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">
+                  <fact.icon size={16} className="text-blue-600 dark:text-blue-400 mb-2" />
+                  <p className="text-xs text-foreground-faint font-bold mb-1 uppercase tracking-wider">
                     {fact.label}
                   </p>
-                  <p className="text-sm text-slate-700 font-medium leading-snug">
+                  <p className="text-sm text-foreground-muted font-medium leading-snug">
                     {fact.value}
                   </p>
                 </div>

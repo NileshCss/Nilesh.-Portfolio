@@ -23,11 +23,11 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <motion.article
       variants={cardItem}
-      className="group flex flex-col bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-600 hover:-translate-y-[3px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
+      className="group flex flex-col bg-card border border-border-base rounded-2xl p-6 hover:border-blue-600 dark:hover:border-blue-500 hover:-translate-y-[3px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
     >
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[1rem] font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-[1rem] font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {project.title}
         </h3>
         {/* Green live dot */}
@@ -38,12 +38,12 @@ export function ProjectCard({ project }: { project: Project }) {
       </div>
 
       {/* Category */}
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+      <p className="text-xs font-semibold text-foreground-faint uppercase tracking-wider mb-2">
         {project.category}
       </p>
 
       {/* Description */}
-      <p className="text-[0.875rem] text-slate-500 leading-[1.6] mb-4 flex-1">
+      <p className="text-[0.875rem] text-foreground-muted leading-[1.6] mb-4 flex-1">
         {project.description}
       </p>
 
@@ -52,7 +52,7 @@ export function ProjectCard({ project }: { project: Project }) {
         {project.techStack.map((tech) => (
           <span
             key={tech}
-            className="font-mono text-[0.72rem] font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded px-2 py-0.5"
+            className="font-mono text-[0.72rem] font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-0.5"
           >
             {tech}
           </span>
@@ -66,7 +66,7 @@ export function ProjectCard({ project }: { project: Project }) {
             href={project.githubUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground font-medium transition-colors"
           >
             <GitHubIcon size={14} />
             GitHub
@@ -77,13 +77,13 @@ export function ProjectCard({ project }: { project: Project }) {
             href={project.liveUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[0.8375rem] font-semibold text-blue-600 hover:gap-2 transition-all"
+            className="inline-flex items-center gap-1 text-[0.8375rem] font-semibold text-blue-600 dark:text-blue-400 hover:gap-2 transition-all"
           >
             Live Demo
             <ExternalLink size={13} />
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[0.8375rem] font-semibold text-blue-600 hover:gap-2 transition-all cursor-default opacity-50">
+          <span className="inline-flex items-center gap-1 text-[0.8375rem] font-semibold text-blue-600 dark:text-blue-400 hover:gap-2 transition-all cursor-default opacity-50">
             Coming Soon
           </span>
         )}

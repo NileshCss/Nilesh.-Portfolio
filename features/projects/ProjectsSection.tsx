@@ -20,7 +20,7 @@ const headerItem: Variants = {
 
 export function ProjectsSection({ projects: projectsList = projects }: { projects?: Project[] }) {
   return (
-    <section id="projects" className="py-[72px] bg-white border-t border-slate-200">
+    <section id="projects" className="py-[72px] bg-surface border-t border-border-base">
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial="hidden"
@@ -40,7 +40,7 @@ export function ProjectsSection({ projects: projectsList = projects }: { project
             />
             <Link
               href="#contact"
-              className="group inline-flex items-center gap-1.5 text-[0.875rem] font-semibold text-blue-600 hover:gap-2.5 transition-all duration-200 mb-2"
+              className="group inline-flex items-center gap-1.5 text-[0.875rem] font-semibold text-blue-600 dark:text-blue-400 hover:gap-2.5 transition-all duration-200 mb-2"
             >
               View All Projects
               <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />

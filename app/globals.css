@@ -3,23 +3,39 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Colors */
+  /* ── Static brand colors (don't change on dark) ── */
   --color-primary: #2563eb;
   --color-primary-hover: #3b82f6;
   --color-emerald: #10b981;
-  --color-bg: #ffffff;
-  --color-bg-muted: #f8fafc;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --color-text-light: #94a3b8;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
 
-  /* Typography */
+  /* ── Semantic surface tokens (driven by :root / .dark CSS vars) ── */
+  --color-surface:          var(--bg-primary);
+  --color-card:             var(--bg-card);
+  --color-muted:            var(--bg-secondary);
+  --color-muted-alt:        var(--bg-tertiary);
+  --color-hover:            var(--bg-hover);
+
+  /* ── Semantic text tokens ── */
+  --color-foreground:       var(--text-primary);
+  --color-foreground-muted: var(--text-secondary);
+  --color-foreground-light: var(--text-muted);
+  --color-foreground-faint: var(--text-light);
+
+  /* ── Semantic border tokens ── */
+  --color-border-base:      var(--border-default);
+  --color-border-emphasis:  var(--border-strong);
+  --color-border-focus:     var(--border-focus);
+
+  /* ── Brand semantic tokens ── */
+  --color-brand:            var(--brand-primary);
+  --color-brand-hover:      var(--brand-hover);
+  --color-brand-pale:       var(--brand-pale);
+
+  /* ── Typography ── */
   --font-sans: var(--font-outfit), "Outfit", system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-mono), "JetBrains Mono", "Fira Code", monospace;
 
-  /* Transitions */
+  /* ── Transitions ── */
   --transition-base: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -139,8 +155,18 @@
   --admin-hover:      #1E293B;
 }
 
-* {
+/* ══════════════════════════════════════════
+   GLOBAL THEME TRANSITIONS
+   Smooth bg/border/color switch on .dark toggle
+   Framer Motion / GSAP manage their own timings.
+══════════════════════════════════════════ */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html {
@@ -153,7 +179,6 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.22s ease, color 0.22s ease;
 }
 
 /* Custom scrollbar */

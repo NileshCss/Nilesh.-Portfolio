@@ -36,25 +36,25 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
   return (
     <motion.div
       variants={item}
-      className="group p-5 rounded-2xl border border-slate-200 bg-white hover:border-blue-600 hover:-translate-y-[3px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
+      className="group p-5 rounded-2xl border border-border-base bg-card hover:border-blue-600 dark:hover:border-blue-500 hover:-translate-y-[3px] hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)] transition-all duration-[220ms]"
     >
       <div className="flex items-start justify-between gap-4 mb-3">
-        <span className="p-2 rounded-lg bg-blue-50 border border-blue-100 group-hover:bg-blue-100 transition-colors">
-          <Icon size={18} className="text-blue-600" />
+        <span className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 group-hover:bg-blue-500/15 transition-colors">
+          <Icon size={18} className="text-blue-600 dark:text-blue-400" />
         </span>
         {achievement.year && (
-          <span className="text-xs font-mono text-slate-400">{achievement.year}</span>
+          <span className="text-xs font-mono text-foreground-faint">{achievement.year}</span>
         )}
       </div>
-      <h3 className="text-sm font-bold text-slate-900 mb-2">{achievement.title}</h3>
-      <p className="text-sm text-slate-500 leading-relaxed">{achievement.description}</p>
+      <h3 className="text-sm font-bold text-foreground mb-2">{achievement.title}</h3>
+      <p className="text-sm text-foreground-muted leading-relaxed">{achievement.description}</p>
     </motion.div>
   );
 }
 
 export function AchievementsSection({ achievements: achievementsList = achievements }: { achievements?: Achievement[] }) {
   return (
-    <section id="achievements" className="py-[72px] bg-slate-50 border-t border-b border-slate-200">
+    <section id="achievements" className="py-[72px] bg-muted border-t border-b border-border-base">
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial="hidden"

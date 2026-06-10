@@ -26,9 +26,9 @@ export function SectionHeader({
           align === "center" && "justify-center"
         )}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
         <span
-          className="text-xs font-bold text-blue-600 uppercase tracking-[0.1em]"
+          className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-[0.1em]"
           style={{ fontFamily: "var(--font-sans)" }}
         >
           {eyebrow}
@@ -37,7 +37,7 @@ export function SectionHeader({
 
       {/* Title */}
       <h2
-        className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-2.5"
+        className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2.5"
         style={{ letterSpacing: "-0.03em" }}
       >
         {title}
@@ -46,13 +46,13 @@ export function SectionHeader({
       {/* Blue accent underline */}
       {accentUnderline && (
         <div
-          className={cn("w-12 h-0.5 bg-blue-600 rounded-full mb-10", align === "center" && "mx-auto")}
+          className={cn("w-12 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-full mb-10", align === "center" && "mx-auto")}
         />
       )}
 
       {/* Description */}
       {description && (
-        <p className="text-slate-500 text-[0.9375rem] leading-relaxed max-w-2xl">
+        <p className="text-foreground-muted text-[0.9375rem] leading-relaxed max-w-2xl">
           {description}
         </p>
       )}
