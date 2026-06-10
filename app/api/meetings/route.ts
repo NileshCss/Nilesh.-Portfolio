@@ -40,11 +40,20 @@ export async function POST(request: Request) {
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const metadata = {
+          type: "booking",
+          subject: "30-Minute Intro Call",
+          status: "Unread",
+          bookingDate: dateString,
+          bookingTime: time
+        };
+        const bodyText = `Scheduled meeting on ${dateString} at ${time}. Timezone: ${timezone}`;
+        
         await supabase.from("contact_messages").insert({
           name: name || "Anonymous",
           email: email || "no-email@example.com",
-          subject: "30-Minute Intro Call",
-          message: `Scheduled meeting on ${dateString} at ${time}. Timezone: ${timezone}`,
+          message: `__METADATA__:${JSON.stringify(metadata)}\n${bodyText}`,
           is_read: false
         });
       } catch (e) {
