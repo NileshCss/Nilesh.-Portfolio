@@ -21,15 +21,11 @@ export async function POST(request: Request) {
     });
 
     const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.warn("RESEND_API_KEY not set — email skipped, booking logged above");
-      // Still return success so the user doesn't get an error
-      return NextResponse.json({ success: true, dev: true }, { status: 200 });
-    }
-
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-
+    
+    // Store in Supabase contact_messages if configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
     // Parse the date for a nice display string
     const [year, month, day] = date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
@@ -39,6 +35,33 @@ export async function POST(request: Request) {
       month: "long",
       day: "numeric",
     });
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        await supabase.from("contact_messages").insert({
+          name: name || "Anonymous",
+          email: email || "no-email@example.com",
+          subject: "30-Minute Intro Call",
+          message: `Scheduled meeting on ${dateString} at ${time}. Timezone: ${timezone}`,
+          is_read: false
+        });
+      } catch (e) {
+        console.warn("Failed to store meeting booking in Supabase:", e);
+      }
+    }
+
+    if (!apiKey) {
+      console.warn("RESEND_API_KEY not set — email skipped, booking logged above");
+      // Still return success so the user doesn't get an error
+      return NextResponse.json({ success: true, dev: true }, { status: 200 });
+    }
+
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+
+    // Date string and object are already defined above
 
     // CONTACT_EMAIL must be the email you registered with at resend.com
     // when using the onboarding@resend.dev sandbox sender.

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, Eye, Reply, Archive, Trash2, Search, RefreshCw, Download } from "lucide-react";
+import { Mail, Eye, Reply, Trash2, Search, RefreshCw, Download, Check, X } from "lucide-react";
 import { useToast } from "@/lib/hooks/useToast";
 
 interface Message {
@@ -15,44 +15,21 @@ interface Message {
   created_at: string;
 }
 
-interface SelectedMessage extends Message {
-  showReply?: boolean;
-  replyText?: string;
-}
-
-const statusLabel = (msg: Message) => {
-  if (!msg.is_read) return "Unread";
-  return "Read";
-};
-
-const statusColors: Record<string, { bg: string; color: string }> = {
-  Unread: { bg: "rgba(59,130,246,0.1)", color: "var(--brand-primary)" },
-  Read: { bg: "rgba(100,116,139,0.1)", color: "var(--text-muted)" },
-  Archived: { bg: "rgba(239,68,68,0.1)", color: "var(--red)" },
-};
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function timeAgo(dateStr: string) {
-  const now = new Date();
-  const d = new Date(dateStr);
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return formatDate(dateStr);
-}
-
 export default function ContactMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All Status");
-  const [selected, setSelected] = useState<SelectedMessage | null>(null);
-  const [deleteModal, setDeleteModal] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Unread' | 'Read'>('All');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Modals state
+  const [activeViewMessage, setActiveViewMessage] = useState<Message | null>(null);
+  const [activeReplyMessage, setActiveReplyMessage] = useState<Message | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replySuccess, setReplySuccess] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   const supabase = createClient();
   const { toast } = useToast();
 
@@ -73,296 +50,540 @@ export default function ContactMessagesPage() {
   useEffect(() => {
     fetchMessages();
 
-    // Real-time subscription
+    // Real-time subscription for changes
     const channel = supabase
-      .channel("contact-messages-changes")
+      .channel("contact-messages-dashboard-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "contact_messages" }, () =>
         fetchMessages()
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchMessages, supabase]);
 
+  // --- Mark as Read Action ---
   const markAsRead = async (id: string) => {
     const { error } = await supabase
       .from("contact_messages")
       .update({ is_read: true })
       .eq("id", id);
-    if (!error) {
-      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, is_read: true } : m)));
-      if (selected?.id === id) setSelected((s) => s ? { ...s, is_read: true } : s);
-    }
-  };
-
-  const handleView = async (msg: Message) => {
-    setSelected({ ...msg });
-    if (!msg.is_read) await markAsRead(msg.id);
-  };
-
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("contact_messages").delete().eq("id", id);
     if (error) {
-      toast.error("Failed to delete: " + error.message);
+      console.warn("Failed to mark message as read in DB:", error.message);
     } else {
-      toast.success("Message deleted");
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-      if (selected?.id === id) setSelected(null);
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
     }
-    setDeleteModal(null);
   };
 
-  const handleReply = (msg: Message) => {
-    const subject = msg.subject ? `Re: ${msg.subject}` : "Re: Your message";
-    const body = `\n\n---\nOriginal message:\n${msg.message}`;
-    window.location.href = `mailto:${msg.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  // --- View Action ---
+  const handleViewMessage = async (msg: Message) => {
+    setActiveViewMessage(msg);
+    if (!msg.is_read) {
+      await markAsRead(msg.id);
+    }
   };
 
-  const exportCSV = () => {
-    const headers = ["Name", "Email", "Subject", "Message", "Date", "Status"];
-    const rows = filtered.map((m) => [
-      m.name, m.email, m.subject ?? "", m.message, formatDate(m.created_at), statusLabel(m),
+  // --- Reply Action ---
+  const handleReplyMessage = (msg: Message) => {
+    setActiveReplyMessage(msg);
+    setReplyText("");
+    setReplySuccess(false);
+  };
+
+  const handleSendReply = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim() || !activeReplyMessage) return;
+
+    // Simulate sending reply
+    setReplySuccess(true);
+    
+    // Open default mail client with prefilled details
+    const subject = activeReplyMessage.subject ? `Re: ${activeReplyMessage.subject}` : "Re: Your message";
+    const body = `${replyText}\n\n---\nOriginal message:\n${activeReplyMessage.message}`;
+    
+    setTimeout(() => {
+      window.location.href = `mailto:${activeReplyMessage.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      setActiveReplyMessage(null);
+      setReplySuccess(false);
+      toast.success("Opening mail client...");
+    }, 1200);
+  };
+
+  // --- Delete Action ---
+  const handleDeleteMessage = async () => {
+    if (!deleteTargetId) return;
+
+    const { error } = await supabase
+      .from("contact_messages")
+      .delete()
+      .eq("id", deleteTargetId);
+
+    if (error) {
+      toast.error("Failed to delete message: " + error.message);
+    } else {
+      toast.success("Message deleted successfully");
+      setMessages(prev => prev.filter(m => m.id !== deleteTargetId));
+      setSelectedIds(prev => prev.filter(id => id !== deleteTargetId));
+      if (activeViewMessage?.id === deleteTargetId) {
+        setActiveViewMessage(null);
+      }
+    }
+    setDeleteTargetId(null);
+  };
+
+  // --- Bulk Delete Action ---
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    const { error } = await supabase
+      .from("contact_messages")
+      .delete()
+      .in("id", selectedIds);
+
+    if (error) {
+      toast.error("Failed to delete messages: " + error.message);
+    } else {
+      toast.success(`${selectedIds.length} messages deleted successfully`);
+      setMessages(prev => prev.filter(m => !selectedIds.includes(m.id)));
+      setSelectedIds([]);
+    }
+    setBulkDeleteConfirm(false);
+  };
+
+  // --- Computations ---
+  const filteredMessages = useMemo(() => {
+    return messages.filter(msg => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        msg.name.toLowerCase().includes(q) ||
+        msg.email.toLowerCase().includes(q) ||
+        (msg.subject ?? "").toLowerCase().includes(q) ||
+        msg.message.toLowerCase().includes(q);
+      
+      const matchesFilter = 
+        statusFilter === 'All' ? true :
+        statusFilter === 'Unread' ? !msg.is_read :
+        msg.is_read;
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [messages, searchQuery, statusFilter]);
+
+  const stats = useMemo(() => {
+    const total = messages.length;
+    const unread = messages.filter(m => !m.is_read).length;
+    return { total, unread };
+  }, [messages]);
+
+  // --- Message Selection Helpers ---
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredMessages.map(m => m.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  // --- Export CSV ---
+  const handleExportCSV = () => {
+    const headers = ["SENDER NAME", "SENDER EMAIL", "SUBJECT", "MESSAGE PREVIEW", "DATE", "STATUS"];
+    const rows = filteredMessages.map(msg => [
+      `"${msg.name.replace(/"/g, '""')}"`,
+      `"${msg.email.replace(/"/g, '""')}"`,
+      `"${(msg.subject ?? "No Subject").replace(/"/g, '""')}"`,
+      `"${msg.message.substring(0, 100).replace(/"/g, '""')}..."`,
+      formatDate(msg.created_at),
+      msg.is_read ? "Read" : "Unread"
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "contact_messages.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `contact_messages_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-
-  const filtered = messages.filter((m) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      m.name.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      (m.subject ?? "").toLowerCase().includes(q) ||
-      m.message.toLowerCase().includes(q);
-
-    const label = statusLabel(m);
-    const matchStatus =
-      statusFilter === "All Status" || label === statusFilter;
-
-    return matchSearch && matchStatus;
-  });
-
-  const unreadCount = messages.filter((m) => !m.is_read).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1200 }}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h2 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 800, fontSize: "1.5rem", color: "var(--text-primary)" }}>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, sans-serif)", fontWeight: 800 }}>
             Contact Messages
           </h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: 4 }}>
-            {messages.length} messages · {unreadCount} unread
+          <p className="text-slate-500 text-sm mt-1">
+            {stats.total} messages · {stats.unread} unread
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
+        <div className="flex items-center gap-3">
+          <button 
             onClick={fetchMessages}
-            className="flex items-center gap-2 rounded-lg justify-center"
-            style={{ padding: "10px 14px", background: "var(--bg-tertiary)", border: "1px solid var(--border-default)", color: "var(--text-muted)", cursor: "pointer" }}
-            title="Refresh"
+            className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors flex items-center justify-center bg-white dark:bg-slate-900"
+            title="Refresh Messages"
           >
-            <RefreshCw size={15} />
+            <RefreshCw className="w-4 h-4" />
           </button>
-          <button
-            onClick={exportCSV}
-            className="flex items-center gap-2 rounded-lg justify-center"
-            style={{ padding: "10px 18px", background: "var(--bg-tertiary)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
+          <button 
+            onClick={handleExportCSV}
+            className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-750 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            <Download size={14} /> Export CSV
+            <Download className="w-4 h-4" />
+            Export CSV
           </button>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
+      {/* Filters / Search Bar */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex-1 relative">
+          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <Search className="w-4 h-4" />
+          </span>
           <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            type="text"
             placeholder="Search by name, email, or subject..."
-            className="w-full rounded-lg outline-none"
-            style={{ paddingLeft: 36, paddingRight: 12, paddingTop: 10, paddingBottom: 10, background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontSize: "0.875rem" }}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-850 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg outline-none w-full sm:w-auto"
-          style={{ padding: "10px 14px", background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)", fontSize: "0.875rem" }}
-        >
-          <option>All Status</option>
-          <option>Unread</option>
-          <option>Read</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as any)}
+            className="py-2.5 px-4 border border-slate-200 dark:border-slate-850 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+          >
+            <option value="All">All Status</option>
+            <option value="Unread">Unread</option>
+            <option value="Read">Read</option>
+          </select>
+          
+          {selectedIds.length > 0 && (
+            <button
+              onClick={() => setBulkDeleteConfirm(true)}
+              className="py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-650 dark:text-red-400 font-semibold text-sm rounded-xl transition-all border border-red-200 dark:border-red-800"
+            >
+              Delete Selected ({selectedIds.length})
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Loading state */}
+      {/* Loading indicator */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="flex gap-5" style={{ minHeight: 400 }}>
-          {/* Table */}
-          <div className="flex-1 overflow-x-auto">
-            <div className="rounded-xl overflow-hidden min-w-[700px]" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}>
-              {/* Header row */}
-              <div className="flex items-center gap-4 px-5 py-3" style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--admin-border)" }}>
-                <input type="checkbox" style={{ width: 16, height: 16 }} readOnly />
-                <span style={{ flex: 2, fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sender</span>
-                <span style={{ flex: 2, fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Message</span>
-                <span style={{ flex: 1, fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Date</span>
-                <span style={{ width: 72, fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</span>
-                <span style={{ width: 110, fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Actions</span>
-              </div>
-
-              {filtered.length === 0 ? (
-                <div className="py-16 text-center">
-                  <Mail size={32} style={{ margin: "0 auto 12px", color: "var(--text-muted)", opacity: 0.4 }} />
-                  <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>No messages found</p>
-                </div>
-              ) : (
-                filtered.map((msg, i) => {
-                  const sc = statusColors[statusLabel(msg)] ?? statusColors.Read;
-                  const isActive = selected?.id === msg.id;
+        /* Messages Table Container */
+        <div className="overflow-x-auto border border-slate-150 dark:border-slate-850 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+          <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-left text-sm text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-800/40 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-4 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={filteredMessages.length > 0 && selectedIds.length === filteredMessages.length}
+                    className="rounded text-blue-600 focus:ring-blue-500 border-slate-350 dark:border-slate-700 w-4 h-4 cursor-pointer"
+                  />
+                </th>
+                <th className="px-6 py-4">Sender</th>
+                <th className="px-6 py-4">Message</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredMessages.length > 0 ? (
+                filteredMessages.map((msg) => {
+                  const isChecked = selectedIds.includes(msg.id);
                   return (
-                    <div
+                    <tr 
                       key={msg.id}
-                      onClick={() => handleView(msg)}
-                      className="flex items-center gap-4 px-5 py-4 transition-colors cursor-pointer"
-                      style={{
-                        borderBottom: i < filtered.length - 1 ? "1px solid var(--admin-border)" : "none",
-                        background: isActive ? "var(--admin-hover)" : "transparent",
-                        fontWeight: msg.is_read ? 400 : 600,
-                      }}
-                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "var(--admin-hover)"; }}
-                      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      onClick={() => handleViewMessage(msg)}
+                      className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors cursor-pointer ${
+                        !msg.is_read ? 'bg-blue-50/10 dark:bg-blue-950/5' : ''
+                      }`}
                     >
-                      <input type="checkbox" style={{ width: 16, height: 16 }} onClick={(e) => e.stopPropagation()} readOnly />
-                      <div style={{ flex: 2, minWidth: 0 }}>
-                        <p style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: msg.is_read ? 500 : 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>{msg.name}</p>
-                        <p style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{msg.email}</p>
-                      </div>
-                      <div style={{ flex: 2, minWidth: 0 }}>
-                        <p style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: msg.is_read ? 500 : 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>{msg.subject ?? "No subject"}</p>
-                        <p className="truncate" style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{msg.message}</p>
-                      </div>
-                      <span style={{ flex: 1, fontSize: "0.8rem", color: "var(--text-muted)" }}>{timeAgo(msg.created_at)}</span>
-                      <span style={{ width: 72, borderRadius: 100, padding: "3px 8px", background: sc.bg, color: sc.color, fontWeight: 600, fontSize: "0.72rem", whiteSpace: "nowrap" }}>{statusLabel(msg)}</span>
-                      <div style={{ width: 110, display: "flex", gap: 3 }} onClick={(e) => e.stopPropagation()}>
-                        {[
-                          { Icon: Eye, title: "View", action: () => handleView(msg) },
-                          { Icon: Reply, title: "Reply", action: () => handleReply(msg) },
-                          { Icon: Trash2, title: "Delete", action: () => setDeleteModal(msg.id) },
-                        ].map(({ Icon, title, action }) => (
-                          <button
-                            key={title}
-                            title={title}
-                            onClick={action}
-                            style={{ width: 30, height: 30, background: "transparent", border: "none", cursor: "pointer", color: title === "Delete" ? "var(--red)" : "var(--text-muted)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-tertiary)"; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                          >
-                            <Icon size={13} />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                      <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleSelectOne(msg.id)}
+                          className="rounded text-blue-600 focus:ring-blue-500 border-slate-350 dark:border-slate-700 w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{msg.name}</div>
+                        <div className="text-xs text-slate-400 dark:text-slate-500 select-all">{msg.email}</div>
+                      </td>
+                      <td className="px-6 py-4 max-w-xs md:max-w-md">
+                        <div className={`truncate text-slate-900 dark:text-slate-100 ${!msg.is_read ? 'font-bold' : 'font-medium'}`}>
+                          {msg.subject ?? "No Subject"}
+                        </div>
+                        <div className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{msg.message}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">
+                        {formatDate(msg.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {!msg.is_read ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-55 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                            Unread
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            Read
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap text-xs font-bold space-x-1" onClick={e => e.stopPropagation()}>
+                        <button 
+                          onClick={() => handleViewMessage(msg)}
+                          className="px-2.5 py-1.5 text-blue-650 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" /> View
+                        </button>
+                        <button 
+                          onClick={() => handleReplyMessage(msg)}
+                          className="px-2.5 py-1.5 text-emerald-650 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                        >
+                          <Reply className="w-3 h-3" /> Reply
+                        </button>
+                        <button 
+                          onClick={() => setDeleteTargetId(msg.id)}
+                          className="px-2.5 py-1.5 text-red-650 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors inline-flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
+                    <Mail className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+                    No messages found.
+                  </td>
+                </tr>
               )}
-            </div>
-          </div>
-
-          {/* Message detail panel */}
-          {selected && (
-            <div
-              className="rounded-xl flex-shrink-0"
-              style={{ width: 340, background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", padding: 24, display: "flex", flexDirection: "column", gap: 16 }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text-primary)", fontFamily: "var(--font-outfit,sans-serif)" }}>{selected.name}</p>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{selected.email}</p>
-                </div>
-                <button
-                  onClick={() => setSelected(null)}
-                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "1.2rem", lineHeight: 1 }}
-                >
-                  ×
-                </button>
-              </div>
-
-              {selected.subject && (
-                <div>
-                  <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Subject</p>
-                  <p style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "0.9rem" }}>{selected.subject}</p>
-                </div>
-              )}
-
-              <div>
-                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Message</p>
-                <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{selected.message}</p>
-              </div>
-
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatDate(selected.created_at)}</p>
-
-              <div className="flex flex-col gap-2" style={{ marginTop: "auto" }}>
-                <button
-                  onClick={() => handleReply(selected)}
-                  className="flex items-center justify-center gap-2 rounded-lg"
-                  style={{ padding: "10px 16px", background: "var(--brand-primary)", border: "none", color: "#fff", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
-                >
-                  <Reply size={14} /> Reply via Email
-                </button>
-                <button
-                  onClick={() => setDeleteModal(selected.id)}
-                  className="flex items-center justify-center gap-2 rounded-lg"
-                  style={{ padding: "10px 16px", background: "transparent", border: "1px solid var(--red)", color: "var(--red)", fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Delete confirmation modal */}
-      {deleteModal && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setDeleteModal(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="rounded-2xl p-6 w-full max-w-sm" style={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)" }}>
-              <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "1rem", color: "var(--text-primary)", marginBottom: 8 }}>Delete Message</h3>
-              <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: 20 }}>This action cannot be undone.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDeleteModal(null)}
-                  style={{ flex: 1, padding: "10px", borderRadius: 8, background: "var(--bg-tertiary)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer", fontWeight: 500 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteModal)}
-                  style={{ flex: 1, padding: "10px", borderRadius: 8, background: "var(--red)", border: "none", color: "#fff", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Delete
-                </button>
+      {/* ========================================================================= */}
+      {/* MODALS SECTION */}
+      {/* ========================================================================= */}
+
+      {/* 1. View Message Modal */}
+      {activeViewMessage && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-scale-up">
+            <div className="bg-slate-50 dark:bg-slate-800/60 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                activeViewMessage.subject === '30-Minute Intro Call' 
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              }`}>
+                {activeViewMessage.subject === '30-Minute Intro Call' ? '📅 Video Booking' : '✉ Message'}
+              </span>
+              <button 
+                onClick={() => setActiveViewMessage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg font-bold p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">From</h3>
+                <p className="font-semibold text-slate-900 dark:text-white text-base">{activeViewMessage.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono select-all">{activeViewMessage.email}</p>
+              </div>
+
+              <div className="flex gap-6 border-y border-slate-100 dark:border-slate-800 py-3">
+                <div className="flex-1">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Date Received</h3>
+                  <p className="text-sm text-slate-700 dark:text-slate-350 font-medium">{formatDate(activeViewMessage.created_at)}</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Subject</h3>
+                <p className="font-bold text-slate-900 dark:text-white text-base mt-0.5">{activeViewMessage.subject ?? "No Subject"}</p>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Message / Details</h3>
+                <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                  {activeViewMessage.message}
+                </div>
               </div>
             </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => {
+                  const replyTarget = activeViewMessage;
+                  setActiveViewMessage(null);
+                  handleReplyMessage(replyTarget);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                Reply
+              </button>
+              <button 
+                onClick={() => setActiveViewMessage(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        </>
+        </div>
+      )}
+
+      {/* 2. Reply Modal */}
+      {activeReplyMessage && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <form onSubmit={handleSendReply} className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-scale-up">
+            <div className="bg-slate-50 dark:bg-slate-800/60 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">↩ Send Reply</h3>
+              <button 
+                type="button"
+                onClick={() => setActiveReplyMessage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg font-bold p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">To</label>
+                <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-650 dark:text-slate-300 text-sm select-all font-mono">
+                  {activeReplyMessage.name} &lt;{activeReplyMessage.email}&gt;
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Subject</label>
+                <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-250 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-650 dark:text-slate-300 text-sm">
+                  Re: {activeReplyMessage.subject ?? "Your message"}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="replyText" className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Your Message</label>
+                <textarea
+                  id="replyText"
+                  rows={5}
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  placeholder="Type your response email here..."
+                  required
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                />
+              </div>
+
+              {replySuccess && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900 text-emerald-800 dark:text-emerald-400 text-xs px-4 py-2.5 rounded-lg text-center font-medium flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" /> Generating mail link...
+                </div>
+              )}
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button 
+                type="submit"
+                disabled={replySuccess}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20"
+              >
+                Send Reply
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveReplyMessage(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 3. Delete Confirmation Modal */}
+      {deleteTargetId !== null && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-800 max-w-sm w-full p-6 space-y-4 animate-scale-up">
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg">Confirm Delete</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+              Are you sure you want to permanently delete this message? This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button 
+                onClick={handleDeleteMessage}
+                className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                Delete
+              </button>
+              <button 
+                onClick={() => setDeleteTargetId(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Bulk Delete Confirmation Modal */}
+      {bulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-800 max-w-sm w-full p-6 space-y-4 animate-scale-up">
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg">Bulk Delete</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+              Are you sure you want to permanently delete the <span className="font-bold text-slate-900 dark:text-white">{selectedIds.length}</span> selected messages?
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button 
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-650 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                Yes, Delete All
+              </button>
+              <button 
+                onClick={() => setBulkDeleteConfirm(false)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold rounded-xl transition-all bg-white dark:bg-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

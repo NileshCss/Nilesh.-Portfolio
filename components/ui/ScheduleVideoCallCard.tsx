@@ -28,9 +28,11 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
   const [guestEmail, setGuestEmail]   = useState("");
   const [timezone] = useState(() => {
     try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz === "Asia/Kolkata") return "Asia/Calcutta";
+      return tz;
     } catch {
-      return "UTC";
+      return "Asia/Calcutta";
     }
   });
 
