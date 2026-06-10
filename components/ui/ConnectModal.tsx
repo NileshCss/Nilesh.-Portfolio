@@ -75,7 +75,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
     >
       <div
         style={{
-          background: "#FFFFFF",
+          background: "var(--bg-card)",
           borderRadius: "20px",
           maxWidth: "540px",
           width: "100%",
@@ -96,16 +96,16 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           style={{
             position: "absolute", top: "16px", right: "16px",
             width: "32px", height: "32px",
-            background: "#F8FAFC",
-            border: "1px solid #E2E8F0",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-default)",
             borderRadius: "8px",
-            color: "#64748B",
+            color: "var(--text-muted)",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             transition: "background 0.15s, color 0.15s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#E2E8F0"; (e.currentTarget as HTMLButtonElement).style.color = "#0F172A"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#F8FAFC"; (e.currentTarget as HTMLButtonElement).style.color = "#64748B"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-secondary)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
         >
           <X size={15} />
         </button>
@@ -135,7 +135,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
             fontFamily: "var(--font-outfit)",
             fontSize: "1.75rem",
             fontWeight: 800,
-            color: "#0F172A",
+            color: "var(--text-primary)",
             letterSpacing: "-0.03em",
             marginBottom: "10px",
             lineHeight: 1.2,
@@ -144,7 +144,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           </h2>
           <p style={{
             fontSize: "0.9375rem",
-            color: "#64748B",
+            color: "var(--text-muted)",
             lineHeight: 1.6,
             maxWidth: "380px",
             margin: "0 auto",
@@ -193,32 +193,32 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           {/* Info pills */}
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px", marginBottom: "16px" }}>
             {["Based in Bihar, India", "Open to remote work", "Open to freelance projects"].map(text => (
-              <span key={text} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.75rem", color: "#64748B" }}>
-                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#94A3B8", display: "inline-block", flexShrink: 0 }} />
+              <span key={text} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--text-light)", display: "inline-block", flexShrink: 0 }} />
                 {text}
               </span>
             ))}
           </div>
 
           {/* Separator */}
-          <div style={{ height: "1px", background: "#F1F5F9", margin: "0 0 16px" }} />
+          <div style={{ height: "1px", background: "var(--border-default)", margin: "0 0 16px" }} />
 
           {/* Bottom bar */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-            <span style={{ fontSize: "0.78rem", color: "#94A3B8", fontFamily: "var(--font-outfit)" }}>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-light)", fontFamily: "var(--font-outfit)" }}>
               Press{" "}
               <kbd style={{
-                background: "#F1F5F9",
-                border: "1px solid #E2E8F0",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-default)",
                 borderRadius: "4px",
                 padding: "1px 6px",
                 fontFamily: "var(--font-mono)",
                 fontSize: "0.72rem",
-                color: "#64748B",
+                color: "var(--text-muted)",
               }}>esc</kbd>
               {" "}to close
             </span>
-            <span style={{ fontSize: "0.78rem", fontWeight: 500, color: "#94A3B8", fontFamily: "var(--font-outfit)" }}>
+            <span style={{ fontSize: "0.78rem", fontWeight: 500, color: "var(--text-light)", fontFamily: "var(--font-outfit)" }}>
               Nilesh Kumar Singh
             </span>
           </div>
@@ -244,8 +244,8 @@ function ContactCard({ icon, title, titleSuffix, subtitle }: ContactCardProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: "#FFFFFF",
-        border: `1px solid ${hovered ? "#0F172A" : "#E2E8F0"}`,
+        background: "var(--bg-card)",
+        border: `1px solid ${hovered ? "var(--border-strong)" : "var(--border-default)"}`,
         borderRadius: "14px",
         padding: "18px 20px",
         display: "flex",
@@ -260,11 +260,11 @@ function ContactCard({ icon, title, titleSuffix, subtitle }: ContactCardProps) {
       {/* Icon */}
       <div style={{
         width: "40px", height: "40px",
-        background: "#F8FAFC",
-        border: "1px solid #E2E8F0",
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border-default)",
         borderRadius: "10px",
         display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#0F172A",
+        color: "var(--text-primary)",
         flexShrink: 0,
       }}>
         {icon}
@@ -272,13 +272,13 @@ function ContactCard({ icon, title, titleSuffix, subtitle }: ContactCardProps) {
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#0F172A", margin: 0, display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
+        <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
           {title}
-          <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "#94A3B8", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "var(--text-light)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
             {titleSuffix}
           </span>
         </p>
-        <p style={{ fontSize: "0.8rem", color: "#64748B", margin: "3px 0 0", fontFamily: "var(--font-outfit)" }}>
+        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "3px 0 0", fontFamily: "var(--font-outfit)" }}>
           {subtitle}
         </p>
       </div>
@@ -287,7 +287,7 @@ function ContactCard({ icon, title, titleSuffix, subtitle }: ContactCardProps) {
       <ArrowUpRight
         size={16}
         style={{
-          color: hovered ? "#0F172A" : "#94A3B8",
+          color: hovered ? "var(--text-primary)" : "var(--text-light)",
           flexShrink: 0,
           transition: "color 0.2s",
         }}

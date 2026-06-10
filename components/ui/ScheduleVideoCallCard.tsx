@@ -165,8 +165,8 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           align-items: center;
           gap: 14px;
           padding: 18px 20px;
-          background: #FFFFFF;
-          border: 1.5px solid #E2E8F0;
+          background: var(--bg-card);
+          border: 1.5px solid var(--border-default);
           border-radius: 14px;
           cursor: pointer;
           position: relative;
@@ -175,8 +175,8 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           width: 100%;
         }
         .contact-card:hover {
-          border-color: #0F172A;
-          background: #FAFAFA;
+          border-color: var(--border-strong);
+          background: var(--bg-hover);
         }
         .contact-card.selected {
           border-color: #2563EB;
@@ -194,14 +194,14 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
         .contact-card-icon {
           width: 40px;
           height: 40px;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-default);
           border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          color: #475569;
+          color: var(--text-muted);
         }
 
         /* ─────────────────────────────────────────
@@ -219,18 +219,18 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           font-family: 'Outfit', sans-serif;
           font-weight: 700;
           font-size: 0.9375rem;
-          color: #0F172A;
+          color: var(--text-primary);
         }
         .contact-card-tag {
           font-family: 'JetBrains Mono', monospace;
           font-weight: 500;
           font-size: 0.75rem;
-          color: #64748B;
+          color: var(--text-muted);
           letter-spacing: 0.02em;
         }
         .contact-card-subtitle {
           font-size: 0.8125rem;
-          color: #64748B;
+          color: var(--text-muted);
           font-weight: 400;
           font-family: 'Outfit', sans-serif;
           margin-top: 3px;
@@ -240,7 +240,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
            CHEVRON (Alternative to Arrow)
         ───────────────────────────────────────── */
         .contact-card-arrow {
-          color: #94A3B8;
+          color: var(--text-light);
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           flex-shrink: 0;
           position: absolute;
@@ -269,8 +269,8 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
         }
         .calendar-inner {
           margin-top: 10px;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-default);
           border-radius: 12px;
           padding: 20px;
         }
@@ -287,27 +287,27 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
         .cal-nav-btn {
           width: 30px;
           height: 30px;
-          background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          background: var(--bg-card);
+          border: 1px solid var(--border-default);
           border-radius: 7px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          color: #64748B;
+          color: var(--text-muted);
           font-size: 1rem;
           transition: border-color 0.2s, color 0.2s;
         }
         .cal-nav-btn:hover:not(:disabled) {
-          border-color: #0F172A;
-          color: #0F172A;
+          border-color: var(--border-strong);
+          color: var(--text-primary);
         }
         .cal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .cal-month-label {
           font-family: 'Outfit', sans-serif;
           font-weight: 700;
           font-size: 0.9375rem;
-          color: #0F172A;
+          color: var(--text-primary);
           letter-spacing: -0.01em;
           text-align: center;
         }
@@ -327,7 +327,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           font-family: 'Outfit', sans-serif;
           font-size: 0.68rem;
           font-weight: 700;
-          color: #94A3B8;
+          color: var(--text-light);
           text-align: center;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -345,11 +345,11 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           user-select: none;
         }
         .cal-day.empty { background: transparent; pointer-events: none; }
-        .cal-day.other-month { color: #CBD5E1; pointer-events: none; opacity: 0.5; }
-        .cal-day.past { color: #CBD5E1; cursor: not-allowed; pointer-events: none; opacity: 0.45; }
+        .cal-day.other-month { color: var(--border-strong); pointer-events: none; opacity: 0.5; }
+        .cal-day.past { color: var(--border-strong); cursor: not-allowed; pointer-events: none; opacity: 0.45; }
         .cal-day.today {
-          background: #0F172A;
-          color: #FFFFFF;
+          background: var(--text-primary);
+          color: var(--bg-primary);
           font-weight: 700;
           position: relative;
         }
@@ -387,7 +387,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           font-family: 'Outfit', sans-serif;
           font-weight: 700;
           font-size: 0.78rem;
-          color: #0F172A;
+          color: var(--text-primary);
           letter-spacing: 0.06em;
           text-transform: uppercase;
           margin-bottom: 10px;
@@ -402,15 +402,15 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
         }
         .time-slot {
           padding: 9px 12px;
-          border: 1px solid #E2E8F0;
+          border: 1px solid var(--border-default);
           border-radius: 8px;
           text-align: center;
           cursor: pointer;
           font-family: 'JetBrains Mono', monospace;
           font-weight: 500;
           font-size: 0.8rem;
-          color: #0F172A;
-          background: #FFFFFF;
+          color: var(--text-primary);
+          background: var(--bg-card);
           transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
           white-space: nowrap;
           min-height: 40px;
@@ -439,7 +439,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           font-family: 'Outfit', sans-serif;
           font-weight: 600;
           font-size: 0.8375rem;
-          color: #0F172A;
+          color: var(--text-primary);
           text-align: center;
           padding: 10px 14px;
           background: rgba(37, 99, 235, 0.06);
@@ -502,13 +502,13 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
         .timezone-text {
           font-family: 'Outfit', sans-serif;
           font-size: 0.78rem;
-          color: #64748B;
+          color: var(--text-muted);
         }
         .timezone-value {
           font-family: 'JetBrains Mono', monospace;
           font-weight: 500;
           font-size: 0.78rem;
-          color: #0F172A;
+          color: var(--text-primary);
         }
 
         /* ─────────────────────────────────────────
@@ -537,29 +537,29 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
           font-family: 'Outfit', sans-serif;
           font-weight: 800;
           font-size: 1.1875rem;
-          color: #0F172A;
+          color: var(--text-primary);
           margin-bottom: 8px;
         }
         .success-body {
           font-family: 'Outfit', sans-serif;
           font-weight: 400;
           font-size: 0.9rem;
-          color: #64748B;
+          color: var(--text-muted);
           line-height: 1.6;
         }
         .success-body strong {
           font-weight: 600;
-          color: #0F172A;
+          color: var(--text-primary);
         }
         .success-note {
           font-family: 'Outfit', sans-serif;
           font-size: 0.8125rem;
-          color: #64748B;
+          color: var(--text-muted);
           margin-top: 8px;
         }
         .success-countdown {
           font-size: 0.75rem;
-          color: #94A3B8;
+          color: var(--text-light);
           margin-top: 14px;
         }
 
@@ -706,9 +706,9 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                       onChange={e => setGuestName(e.target.value)}
                       style={{
                         width: '100%', padding: '9px 12px', borderRadius: '8px',
-                        border: '1px solid #E2E8F0', fontSize: '0.85rem',
+                        border: '1px solid var(--border-default)', fontSize: '0.85rem',
                         fontFamily: "'Outfit', sans-serif", outline: 'none',
-                        color: '#0F172A', background: '#fff', boxSizing: 'border-box',
+                        color: 'var(--text-primary)', background: 'var(--bg-card)', boxSizing: 'border-box',
                       }}
                     />
                     <input
@@ -718,9 +718,9 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
                       onChange={e => setGuestEmail(e.target.value)}
                       style={{
                         width: '100%', padding: '9px 12px', borderRadius: '8px',
-                        border: '1px solid #E2E8F0', fontSize: '0.85rem',
+                        border: '1px solid var(--border-default)', fontSize: '0.85rem',
                         fontFamily: "'Outfit', sans-serif", outline: 'none',
-                        color: '#0F172A', background: '#fff', boxSizing: 'border-box',
+                        color: 'var(--text-primary)', background: 'var(--bg-card)', boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -754,7 +754,7 @@ export function ScheduleVideoCallCard({ onCloseModal }: ScheduleVideoCallCardPro
 
               {/* Timezone */}
               <div className="timezone-row">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#94A3B8' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-light)' }}>
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                 </svg>
