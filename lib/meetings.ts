@@ -92,7 +92,11 @@ export async function approveBooking(bookingId: string, source: "Dashboard" | "E
     .single();
 
   if (updateError || !updatedBooking) {
-    return { success: false, error: "Failed to update database record." };
+    console.error("Supabase update failed:", updateError);
+    return { 
+      success: false, 
+      error: `Failed to update database record: ${updateError?.message || "Unknown database error"}` 
+    };
   }
 
   // 5. Send confirmation emails via Resend
