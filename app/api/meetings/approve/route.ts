@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { approveBooking } from "@/lib/meetings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,154 +14,30 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const result = await approveBooking(bookingId, "Email");
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("Supabase credentials not configured in environment.");
-      return new Response(
-        getErrorHtml("Configuration Error", "Database credentials are not configured on the server."),
-        { headers: { "Content-Type": "text/html" }, status: 500 }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false }
-    });
-
-    // 1. Fetch the booking
-    const { data: booking, error: fetchError } = await supabase
-      .from("contact_messages")
-      .select("*")
-      .eq("id", bookingId)
-      .single();
-
-    if (fetchError || !booking) {
-      console.error("Failed to fetch booking details:", fetchError);
-      return new Response(
-        getErrorHtml("Booking Not Found", "The meeting request could not be found or does not exist."),
-        { headers: { "Content-Type": "text/html" }, status: 404 }
-      );
-    }
-
-    // 2. Check if already confirmed
-    if (booking.status === "Confirmed") {
-      return new Response(
-        getSuccessHtml(
-          booking,
-          "Already Confirmed",
-          "This meeting has already been approved and confirmed."
-        ),
-        { headers: { "Content-Type": "text/html" } }
-      );
-    }
-
-    // 3. Update status in Supabase
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
-    const timeStr = now.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit"
-    });
-    const confirmedAtStr = `${dateStr} at ${timeStr}`;
-
-    const { error: updateError } = await supabase
-      .from("contact_messages")
-      .update({
-        status: "Confirmed",
-        confirmed_at: confirmedAtStr,
-        is_read: true
-      })
-      .eq("id", bookingId);
-
-    if (updateError) {
-      console.error("Failed to update database status:", updateError);
-      return new Response(
-        getErrorHtml("Database Update Failed", "Failed to update the meeting status in the database."),
-        { headers: { "Content-Type": "text/html" }, status: 500 }
-      );
-    }
-
-    // 4. Send Confirmation Email to the guest
-    const apiKey = process.env.RESEND_API_KEY;
-    if (apiKey && booking.email) {
-      try {
-        const resend = new Resend(apiKey);
-        const guestName = booking.name || "there";
-        const selectedDate = booking.booking_date || "Unknown Date";
-        const selectedTime = booking.booking_time || "Unknown Time";
-
-        const emailHtml = `
-          <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f5f5;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
-            <div style="padding:32px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);">
-              <h1 style="margin:0;font-size:22px;font-weight:800;color:white;">🎉 Your meeting has been confirmed!</h1>
-              <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.8);">30-Minute Intro Call</p>
-            </div>
-            <div style="padding:32px;line-height:1.6;font-size:14px;color:#d4d4d8;">
-              <p>Hi ${guestName},</p>
-              <p>🎉 Your meeting has been confirmed!</p>
-              <p>Here are your booking details:</p>
-              
-              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:24px 0;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <tr>
-                    <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;width:100px;">DATE</td>
-                    <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">${selectedDate}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">TIME</td>
-                    <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">${selectedTime}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">DURATION</td>
-                    <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">30 Minutes</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">TYPE</td>
-                    <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">Video Call (Intro Call)</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:6px 0;color:#71717a;font-size:12px;font-family:monospace;">TIMEZONE</td>
-                    <td style="padding:6px 0;font-size:14px;color:#f5f5f5;font-weight:600;">Asia/Calcutta</td>
-                  </tr>
-                </table>
-              </div>
-              
-              <p style="margin-bottom:16px;">A video call link will be shared with you shortly before the meeting.</p>
-              <p style="margin-bottom:24px;">If you need to reschedule or cancel, please reply to this email.</p>
-              
-              <p style="margin-bottom:4px;color:#a1a1aa;">Looking forward to connecting with you! 🙌</p>
-              <p style="margin-top:20px;font-weight:600;color:#f5f5f5;">Warm regards,</p>
-              <p style="margin:0;color:#f5f5f5;font-weight:600;">Nilesh Kumar Singh</p>
-              <p style="margin:0;font-size:12px;color:#71717a;">nileshkumarsingh.dev</p>
-            </div>
-          </div>
-        `;
-
-        const { error: emailError } = await resend.emails.send({
-          from: "Nilesh Kumar Singh <meetings@nileshrajput.me>",
-          to: booking.email,
-          subject: `Your Meeting is Confirmed – 30 Minute Intro Call with Nilesh Kumar Singh`,
-          html: emailHtml,
-        });
-
-        if (emailError) {
-          console.error("Resend confirmation email failed to send:", emailError);
-        }
-      } catch (err) {
-        console.error("Error sending confirmation email:", err);
+    if (!result.success) {
+      if (result.error === "Already Confirmed" && result.booking) {
+        return new Response(
+          getSuccessHtml(
+            result.booking,
+            "Already Confirmed",
+            "This meeting has already been approved and confirmed."
+          ),
+          { headers: { "Content-Type": "text/html" } }
+        );
       }
+      return new Response(
+        getErrorHtml("Approval Failed", result.error || "Failed to approve the meeting request."),
+        { headers: { "Content-Type": "text/html" }, status: 400 }
+      );
     }
 
     return new Response(
       getSuccessHtml(
-        booking,
+        result.booking,
         "Meeting Approved!",
-        "The meeting request has been successfully approved and confirmed. A confirmation email was sent to the guest."
+        "The meeting request has been successfully approved and confirmed. An email with the Google Meet details has been sent to the guest."
       ),
       { headers: { "Content-Type": "text/html" } }
     );
@@ -282,14 +156,15 @@ function getSuccessHtml(booking: any, title: string, subtitle: string) {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid var(--border);
           border-radius: 16px;
-          padding: 24px;
+          padding: 20px 24px;
           margin-bottom: 32px;
           text-align: left;
         }
         .detail-row {
           display: flex;
           justify-content: space-between;
-          padding: 8px 0;
+          align-items: center;
+          padding: 10px 0;
           border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
         .detail-row:last-child {
@@ -297,15 +172,16 @@ function getSuccessHtml(booking: any, title: string, subtitle: string) {
         }
         .detail-label {
           font-family: monospace;
-          font-size: 12px;
+          font-size: 11px;
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .detail-value {
-          font-size: 14px;
+          font-size: 13.5px;
           font-weight: 700;
           color: #f3f4f6;
+          text-align: right;
         }
         .button {
           display: inline-block;
@@ -339,11 +215,11 @@ function getSuccessHtml(booking: any, title: string, subtitle: string) {
         <div class="details-card">
           <div class="detail-row">
             <span class="detail-label">Guest</span>
-            <span class="detail-value">${booking.name}</span>
+            <span class="detail-value">${booking.name || "Anonymous"}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Email</span>
-            <span class="detail-value">${booking.email}</span>
+            <span class="detail-value" style="font-family: monospace; font-size: 12px;">${booking.email}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Date</span>
@@ -353,6 +229,12 @@ function getSuccessHtml(booking: any, title: string, subtitle: string) {
             <span class="detail-label">Time</span>
             <span class="detail-value">${booking.booking_time}</span>
           </div>
+          ${booking.meet_link ? `
+          <div class="detail-row">
+            <span class="detail-label">Meet Link</span>
+            <span class="detail-value" style="color: #10b981; font-family: monospace;"><a href="https://${booking.meet_link}" target="_blank" style="color: #10b981; text-decoration: none;">https://${booking.meet_link}</a></span>
+          </div>
+          ` : ""}
         </div>
 
         <button onclick="window.close()" class="button">Close Window</button>

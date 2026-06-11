@@ -16,6 +16,8 @@ interface Message {
   confirmed_at?: string;
   booking_date?: string;
   booking_time?: string;
+  meet_link?: string;
+  approval_source?: string;
   is_read: boolean;
   created_at: string;
 }
@@ -138,77 +140,53 @@ export default function ContactMessagesPage() {
   // --- Approve / Confirm Booking Action ---
   const handleApproveBooking = async (msg: Message) => {
     setApprovingId(msg.id);
-    const now = new Date();
-    
-    // Formatting date and time
-    const dateStr = now.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
-    const timeStr = now.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit"
-    });
-    const confirmedAtStr = `${dateStr} at ${timeStr}`;
 
-    // Update in Supabase
-    const { error: dbError } = await supabase
-      .from("contact_messages")
-      .update({
-        status: 'Confirmed',
-        confirmed_at: confirmedAtStr,
-        is_read: true
-      })
-      .eq("id", msg.id);
-
-    if (dbError) {
-      toast.error("Failed to approve booking: " + dbError.message);
-      setApprovingId(null);
-      return;
-    }
-
-    // Trigger API to send confirmation email
     try {
+      // Trigger API to approve booking and send emails
       const res = await fetch("/api/admin/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: msg.email,
-          name: msg.name,
-          date: msg.booking_date || "Unknown Date",
-          time: msg.booking_time || "Unknown Time"
+          id: msg.id
         })
       });
 
       if (res.ok) {
+        const data = await res.json();
+        const updated = data.booking as Message;
+
         toast.success(`Confirmation email sent to ${msg.email}`);
+
+        // Refresh state locally with full updated record from API
+        setMessages(prev => prev.map(m => m.id === msg.id ? { 
+          ...m, 
+          status: updated.status, 
+          confirmed_at: updated.confirmed_at, 
+          meet_link: updated.meet_link,
+          approval_source: updated.approval_source,
+          is_read: true 
+        } : m));
+        
+        if (activeViewMessage?.id === msg.id) {
+          setActiveViewMessage(prev => prev ? { 
+            ...prev, 
+            status: updated.status, 
+            confirmed_at: updated.confirmed_at, 
+            meet_link: updated.meet_link,
+            approval_source: updated.approval_source,
+            is_read: true 
+          } : null);
+        }
       } else {
         const errData = await res.json();
-        console.error("Failed to send approval email via API:", errData.error);
-        toast.error("Booking confirmed but failed to send email: " + (errData.error || "Unknown error"));
+        console.error("Failed to approve booking:", errData.error);
+        toast.error("Failed to approve booking: " + (errData.error || "Unknown error"));
       }
     } catch (err) {
-      console.error("Approval email dispatch crash:", err);
-      toast.error("Confirmed, but failed to dispatch email client API");
+      console.error("Approval API crash:", err);
+      toast.error("Failed to communicate with approval API");
     }
 
-    // Refresh state locally
-    setMessages(prev => prev.map(m => m.id === msg.id ? { 
-      ...m, 
-      status: 'Confirmed', 
-      confirmed_at: confirmedAtStr, 
-      is_read: true 
-    } : m));
-    
-    if (activeViewMessage?.id === msg.id) {
-      setActiveViewMessage(prev => prev ? { 
-        ...prev, 
-        status: 'Confirmed', 
-        confirmed_at: confirmedAtStr, 
-        is_read: true 
-      } : null);
-    }
     setApprovingId(null);
   };
 
@@ -466,9 +444,14 @@ export default function ContactMessagesPage() {
                           {item.subject}
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{item.message}</div>
+                        {item.meet_link && (
+                          <div className="text-[11px] text-emerald-650 dark:text-emerald-455 font-mono mt-1 font-bold select-all flex items-center gap-1">
+                            <span>🔗</span> {item.meet_link}
+                          </div>
+                        )}
                         {isConfirmed && item.confirmed_at && (
-                          <div className="text-[11px] text-emerald-650 dark:text-emerald-455 font-semibold flex items-center gap-1 mt-1">
-                            <Check className="w-3.5 h-3.5" /> Confirmed on {item.confirmed_at}
+                          <div className="text-[11px] text-slate-450 dark:text-slate-550 mt-1">
+                            Confirmed on {item.confirmed_at}
                           </div>
                         )}
                       </td>
@@ -477,9 +460,20 @@ export default function ContactMessagesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {isConfirmed ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
-                            Confirmed
-                          </span>
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                              Confirmed
+                            </span>
+                            {item.approval_source === 'Email' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                                Approved via Email
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                Approved via Dashboard
+                              </span>
+                            )}
+                          </div>
                         ) : item.status === 'Unread' ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-55 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                             Unread
@@ -602,9 +596,20 @@ export default function ContactMessagesPage() {
                   <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
                     {activeViewMessage.message}
                   </div>
+                  {activeViewMessage.meet_link && (
+                    <div className="text-[11px] text-emerald-650 dark:text-emerald-400 font-bold font-mono mt-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 p-2.5 rounded-lg select-all">
+                      <span>🔗 Google Meet: </span> 
+                      <a href={`https://${activeViewMessage.meet_link}`} target="_blank" className="underline hover:text-emerald-500 ml-1">
+                        https://${activeViewMessage.meet_link}
+                      </a>
+                    </div>
+                  )}
                   {isConfirmed && activeViewMessage.confirmed_at && (
-                    <div className="text-[11px] text-emerald-650 dark:text-emerald-450 font-semibold flex items-center gap-1 mt-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 p-2.5 rounded-lg">
+                    <div className="text-[11px] text-emerald-650 dark:text-emerald-455 font-semibold flex items-center gap-1 mt-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/50 p-2.5 rounded-lg">
                       <CheckCircle className="w-4 h-4 text-emerald-55" /> Confirmed on {activeViewMessage.confirmed_at}
+                      {activeViewMessage.approval_source && (
+                        <span className="ml-1 text-slate-500">({activeViewMessage.approval_source})</span>
+                      )}
                     </div>
                   )}
                 </div>

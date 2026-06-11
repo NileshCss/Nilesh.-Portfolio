@@ -106,6 +106,8 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   confirmed_at TEXT,
   booking_date TEXT,
   booking_time TEXT,
+  meet_link TEXT,
+  approval_source TEXT,
   is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
