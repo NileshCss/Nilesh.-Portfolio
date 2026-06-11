@@ -36,22 +36,33 @@ export async function POST(request: Request) {
       day: "numeric",
     });
 
+    let bookingId = "";
     if (supabaseUrl && supabaseKey) {
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const supabase = createClient(supabaseUrl, supabaseKey);
         
-        await supabase.from("contact_messages").insert({
-          name: name || "Anonymous",
-          email: email || "no-email@example.com",
-          message: `Scheduled meeting on ${dateString} at ${time}. Timezone: ${timezone}`,
-          subject: "30-Minute Intro Call",
-          type: "booking",
-          status: "Unread",
-          booking_date: dateString,
-          booking_time: time,
-          is_read: false
-        });
+        const { data: insertedData, error: dbError } = await supabase
+          .from("contact_messages")
+          .insert({
+            name: name || "Anonymous",
+            email: email || "no-email@example.com",
+            message: `Scheduled meeting on ${dateString} at ${time}. Timezone: ${timezone}`,
+            subject: "30-Minute Intro Call",
+            type: "booking",
+            status: "Unread",
+            booking_date: dateString,
+            booking_time: time,
+            is_read: false
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          console.warn("Supabase database insert error:", dbError);
+        } else if (insertedData) {
+          bookingId = insertedData.id;
+        }
       } catch (e) {
         console.warn("Failed to store meeting booking in Supabase:", e);
       }
@@ -76,6 +87,8 @@ export async function POST(request: Request) {
       "rajputnileshsingh25@gmail.com";
 
     const meetingLabel = type === "video_call_30min" ? "30-Minute Video Call" : "Meeting";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const approveUrl = `${siteUrl}/api/meetings/approve?id=${bookingId}`;
 
     // 1️⃣  Notify the portfolio owner
     const ownerHtml = `
@@ -111,7 +124,14 @@ export async function POST(request: Request) {
               <td style="padding:8px 0;"><a href="mailto:${email}" style="color:#6366f1;font-size:14px;">${email}</a></td>
             </tr>` : ""}
           </table>
-          <p style="font-size:13px;color:#71717a;margin:0;">Send the meeting invite to the person who booked this slot.</p>
+          ${bookingId ? `
+          <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
+            <a href="${approveUrl}" style="display: inline-block; background: #10b981; color: white; padding: 12px 28px; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 14px; box-shadow: 0 4px 12px rgba(16,185,129,0.25);">
+              ✅ Approve & Confirm Booking
+            </a>
+          </div>
+          ` : ""}
+          <p style="font-size:13px;color:#71717a;margin:20px 0 0 0;">Send the meeting invite to the person who booked this slot.</p>
         </div>
       </div>
     `;
