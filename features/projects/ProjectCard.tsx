@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, type Variants } from "framer-motion";
-import { ExternalLink, FileText, Check } from "lucide-react";
+import { ExternalLink, Check } from "lucide-react";
 import type { Project } from "@/types";
 
 function Github({ size = 16, className }: { size?: number; className?: string }) {
@@ -192,15 +192,6 @@ export function ProjectCard({ project, isFeatured = false }: ProjectCardProps) {
                   Live Demo
                 </a>
               )}
-              <a
-                href={meta.caseStudyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-xs font-bold transition-all duration-200 flex-1 hover:-translate-y-0.5 ${btnSecondaryClass}`}
-              >
-                <FileText size={15} />
-                Case Study
-              </a>
             </div>
           </div>
         </div>
@@ -260,40 +251,29 @@ export function ProjectCard({ project, isFeatured = false }: ProjectCardProps) {
           </div>
 
           {/* Action CTAs */}
-          <div className="flex flex-col gap-1.5 w-full">
-            <div className="flex gap-1.5 w-full">
-              {project.githubUrl && (
-                <a
-                  href={project.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-[10px] font-bold transition-all duration-200 flex-1 hover:-translate-y-0.5 ${btnSecondaryClass}`}
-                >
-                  <Github size={13} />
-                  Code
-                </a>
-              )}
-              {project.liveUrl && (
-                <a
-                  href={project.liveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[10px] font-bold text-white bg-[#3b82f6] hover:bg-[#2563eb] hover:shadow-[0_2px_8px_rgba(59,130,246,0.3)] transition-all duration-200 flex-1 hover:-translate-y-0.5"
-                >
-                  <ExternalLink size={13} />
-                  Demo
-                </a>
-              )}
-            </div>
-            <a
-              href={meta.caseStudyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-[10px] font-bold transition-all duration-200 w-full hover:-translate-y-0.5 ${btnSecondaryClass}`}
-            >
-              <FileText size={13} />
-              Case Study
-            </a>
+          <div className="flex gap-1.5 w-full">
+            {project.githubUrl && (
+              <a
+                href={project.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-[10px] font-bold transition-all duration-200 flex-1 hover:-translate-y-0.5 ${btnSecondaryClass}`}
+              >
+                <Github size={13} />
+                Code
+              </a>
+            )}
+            {project.liveUrl && (
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[10px] font-bold text-white bg-[#3b82f6] hover:bg-[#2563eb] hover:shadow-[0_2px_8px_rgba(59,130,246,0.3)] transition-all duration-200 flex-1 hover:-translate-y-0.5"
+              >
+                <ExternalLink size={13} />
+                Demo
+              </a>
+            )}
           </div>
         </div>
       </div>
