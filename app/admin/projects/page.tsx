@@ -233,12 +233,13 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white/90">Projects</h2>
-          <p className="text-sm text-slate-500">{projects.length} projects total</p>
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Projects</h2>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{projects.length} projects total</p>
         </div>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-px hover:shadow-lg hover:shadow-blue-500/25"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-px hover:shadow-lg"
+          style={{ background: "var(--brand-primary)" }}
         >
           <Plus size={16} /> Add Project
         </button>
@@ -246,13 +247,14 @@ export default function ProjectsPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
         <input
           type="text"
           placeholder="Search projects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+          className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-colors placeholder:text-slate-500"
+          style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)", color: "var(--text-primary)" }}
         />
       </div>
 
@@ -261,12 +263,15 @@ export default function ProjectsPage() {
         {filtered.map((project) => (
           <div
             key={project.id}
-            className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-white/[0.1] transition-all duration-200"
+            className="group rounded-2xl p-5 transition-all duration-200"
+            style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--brand-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--admin-border)")}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-4 min-w-0 flex-1">
                 {project.preview_image_url && (
-                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/[0.08] flex-shrink-0 bg-white/[0.02] mt-0.5">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 mt-0.5" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)" }}>
                     <img
                       src={project.preview_image_url}
                       alt={project.title}
@@ -276,12 +281,12 @@ export default function ProjectsPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-base font-bold text-white/90">{project.title}</h3>
+                    <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{project.title}</h3>
                     <span className={cn(
                       "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
-                      project.status === "live" && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-                      project.status === "completed" && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-                      project.status === "development" && "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                      project.status === "live" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+                      project.status === "completed" && "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
+                      project.status === "development" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                     )}>
                       {project.status}
                     </span>
@@ -289,12 +294,13 @@ export default function ProjectsPage() {
                       <Star size={14} className="text-amber-400 fill-amber-400" />
                     )}
                   </div>
-                  <p className="text-sm text-slate-400 mb-3">{project.tagline}</p>
+                  <p className="text-sm mb-3" style={{ color: "var(--text-muted)" }}>{project.tagline}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {(project.tech_stack ?? []).map((tech) => (
                       <span
                         key={tech}
-                        className="px-2 py-0.5 rounded text-[11px] font-mono font-medium text-blue-400 bg-blue-500/10 border border-blue-500/15"
+                        className="px-2 py-0.5 rounded text-[11px] font-mono font-medium"
+                        style={{ color: "var(--brand-primary)", background: "var(--bg-secondary)", border: "1px solid var(--border-default)" }}
                       >
                         {tech}
                       </span>
@@ -311,7 +317,7 @@ export default function ProjectsPage() {
                     "p-2 rounded-lg transition-colors",
                     project.is_featured
                       ? "text-amber-400 hover:bg-amber-500/10"
-                      : "text-slate-600 hover:text-slate-400 hover:bg-white/[0.04]"
+                      : "text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-white/[0.04]"
                   )}
                 >
                   <Star size={16} className={project.is_featured ? "fill-current" : ""} />
@@ -321,7 +327,7 @@ export default function ProjectsPage() {
                     href={project.github_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 rounded-lg text-slate-600 hover:text-white hover:bg-white/[0.04] transition-colors"
+                    className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-white/[0.04] transition-colors"
                   >
                     <GithubIcon size={16} />
                   </a>
@@ -331,20 +337,20 @@ export default function ProjectsPage() {
                     href={project.live_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 rounded-lg text-slate-600 hover:text-white hover:bg-white/[0.04] transition-colors"
+                    className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-white/[0.04] transition-colors"
                   >
                     <ExternalLink size={16} />
                   </a>
                 )}
                 <button
                   onClick={() => openEdit(project)}
-                  className="p-2 rounded-lg text-slate-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-colors"
                 >
                   <Pencil size={16} />
                 </button>
                 <button
                   onClick={() => setDeleteModal(project.id)}
-                  className="p-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -372,51 +378,56 @@ export default function ProjectsPage() {
         <div className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Title *</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Title *</label>
               <input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Slug</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Slug</label>
               <input
                 value={form.slug}
                 onChange={(e) => setForm({ ...form, slug: e.target.value })}
                 placeholder="auto-generated"
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Tagline *</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Tagline *</label>
             <input
               value={form.tagline}
               onChange={(e) => setForm({ ...form, tagline: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Description *</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Description *</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500 resize-none"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Preview Image / Dashboard Screenshot</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Preview Image / Dashboard Screenshot</label>
             <div className="flex gap-2">
               <input
                 value={form.preview_image_url ?? ""}
                 onChange={(e) => setForm({ ...form, preview_image_url: e.target.value })}
                 placeholder="https://... or upload/select a file"
-                className="flex-1 px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+                className="flex-1 px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
               <input
                 type="file"
@@ -429,7 +440,8 @@ export default function ProjectsPage() {
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={imageUploading}
-                className="px-4 py-2.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-sm font-semibold text-white/90 border border-white/[0.08] transition-colors flex items-center gap-2"
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               >
                 {imageUploading ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -440,17 +452,18 @@ export default function ProjectsPage() {
               </button>
             </div>
             {form.preview_image_url && (
-              <div className="mt-2 relative rounded-lg border border-white/[0.08] overflow-hidden max-h-32 group flex items-center justify-between p-2 bg-white/[0.02]">
+              <div className="mt-2 relative rounded-lg overflow-hidden max-h-32 group flex items-center justify-between p-2" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)" }}>
                 <div className="flex items-center gap-3">
                   <img
                     src={form.preview_image_url}
                     alt="Preview"
-                    className="w-16 h-10 object-cover rounded border border-white/[0.08]"
+                    className="w-16 h-10 object-cover rounded"
+                    style={{ border: "1px solid var(--border-default)" }}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=100&auto=format&fit=crop&q=60";
                     }}
                   />
-                  <span className="text-xs text-slate-400 truncate max-w-xs">{form.preview_image_url}</span>
+                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{form.preview_image_url}</span>
                 </div>
                 <button
                   type="button"
@@ -465,85 +478,93 @@ export default function ProjectsPage() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Category *</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Category *</label>
               <input
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 placeholder="SaaS Platform, E-commerce..."
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Status</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               >
-                <option value="completed" className="bg-[#12121a]">Completed</option>
-                <option value="live" className="bg-[#12121a]">Live</option>
-                <option value="development" className="bg-[#12121a]">In Development</option>
+                <option value="completed" style={{ background: "var(--bg-secondary)", color: "var(--text-primary)" }}>Completed</option>
+                <option value="live" style={{ background: "var(--bg-secondary)", color: "var(--text-primary)" }}>Live</option>
+                <option value="development" style={{ background: "var(--bg-secondary)", color: "var(--text-primary)" }}>In Development</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Tech Stack (comma separated)</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Tech Stack (comma separated)</label>
             <input
               value={techText}
               onChange={(e) => setTechText(e.target.value)}
               placeholder="React, Node.js, MongoDB"
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Features (one per line)</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Features (one per line)</label>
             <textarea
               value={featuresText}
               onChange={(e) => setFeaturesText(e.target.value)}
               rows={3}
               placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500 resize-none"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">GitHub URL</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>GitHub URL</label>
               <input
                 value={form.github_url ?? ""}
                 onChange={(e) => setForm({ ...form, github_url: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Live URL</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Live URL</label>
               <input
                 value={form.live_url ?? ""}
                 onChange={(e) => setForm({ ...form, live_url: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Business Impact</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Business Impact</label>
             <textarea
               value={form.business_impact ?? ""}
               onChange={(e) => setForm({ ...form, business_impact: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500 resize-none"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Challenge</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Challenge</label>
             <textarea
               value={form.challenge ?? ""}
               onChange={(e) => setForm({ ...form, challenge: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="w-full px-3 py-2.5 rounded-lg outline-none transition-colors text-sm placeholder:text-slate-500 resize-none"
+              style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
           </div>
 
@@ -553,24 +574,26 @@ export default function ProjectsPage() {
                 type="checkbox"
                 checked={form.is_featured}
                 onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
-                className="w-4 h-4 rounded border-white/20 bg-white/[0.04] text-blue-600 focus:ring-blue-500/30"
+                className="w-4 h-4 rounded border-slate-300 dark:border-white/20 bg-transparent text-blue-600 focus:ring-blue-500/30"
               />
-              <span className="text-sm text-slate-300">Featured project</span>
+              <span className="text-sm" style={{ color: "var(--text-primary)" }}>Featured project</span>
             </label>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.06]">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t" style={{ borderColor: "var(--border-default)" }}>
             <button
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{ color: "var(--text-muted)" }}
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving || !form.title || !form.tagline || !form.description}
-              className="px-5 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors"
+              style={{ background: "var(--brand-primary)" }}
             >
               {saving ? "Saving..." : editing ? "Update" : "Create"}
             </button>
