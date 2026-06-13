@@ -12,7 +12,9 @@ export interface Project {
   isFeatured?: boolean;
   businessImpact?: string;
   challenge?: string;
+  previewImageUrl?: string | null;
 }
+
 
 export interface Experience {
   id: string;

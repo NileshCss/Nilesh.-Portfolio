@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FormModal } from "@/components/admin/FormModal";
 import { DeleteConfirmModal } from "@/components/admin/DeleteConfirmModal";
@@ -13,6 +13,8 @@ import {
   Star,
   Search,
   Code2,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,7 @@ interface Project {
   business_impact: string | null;
   challenge: string | null;
   sort_order: number;
+  preview_image_url: string | null;
 }
 
 const emptyProject: Omit<Project, "id"> = {
@@ -57,6 +60,7 @@ const emptyProject: Omit<Project, "id"> = {
   business_impact: "",
   challenge: "",
   sort_order: 0,
+  preview_image_url: "",
 };
 
 export default function ProjectsPage() {
@@ -73,6 +77,54 @@ export default function ProjectsPage() {
   const [techText, setTechText] = useState("");
   const supabase = createClient();
   const { toast } = useToast();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large. Max 10MB.");
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+      let uploadBucket = "project-images";
+      
+      let { data: uploadData, error: uploadError } = await supabase.storage
+        .from(uploadBucket)
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) {
+        console.warn("Upload to project-images failed, trying media bucket:", uploadError.message);
+        uploadBucket = "media";
+        const fallback = await supabase.storage
+          .from(uploadBucket)
+          .upload(fileName, file, { cacheControl: "3600", upsert: false });
+        uploadData = fallback.data;
+        uploadError = fallback.error;
+      }
+
+      if (uploadError) {
+        toast.error("Upload failed: " + uploadError.message);
+      } else if (uploadData) {
+        const { data: urlData } = supabase.storage
+          .from(uploadBucket)
+          .getPublicUrl(uploadData.path);
+        
+        setForm((prev) => ({ ...prev, preview_image_url: urlData.publicUrl }));
+        toast.success("Image uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error("Upload failed. Please try again.");
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
 
   const fetchProjects = useCallback(async () => {
     const { data } = await supabase
@@ -95,7 +147,10 @@ export default function ProjectsPage() {
 
   const openEdit = (project: Project) => {
     setEditing(project);
-    setForm({ ...project });
+    setForm({
+      ...project,
+      preview_image_url: project.preview_image_url || "",
+    });
     setFeaturesText((project.features ?? []).join("\n"));
     setTechText((project.tech_stack ?? []).join(", "));
     setModalOpen(true);
@@ -112,6 +167,7 @@ export default function ProjectsPage() {
       live_url: form.live_url || null,
       business_impact: form.business_impact || null,
       challenge: form.challenge || null,
+      preview_image_url: form.preview_image_url || null,
     };
 
     if (editing) {
@@ -208,31 +264,42 @@ export default function ProjectsPage() {
             className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-white/[0.1] transition-all duration-200"
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-base font-bold text-white/90">{project.title}</h3>
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
-                    project.status === "live" && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-                    project.status === "completed" && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-                    project.status === "development" && "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                  )}>
-                    {project.status}
-                  </span>
-                  {project.is_featured && (
-                    <Star size={14} className="text-amber-400 fill-amber-400" />
-                  )}
-                </div>
-                <p className="text-sm text-slate-400 mb-3">{project.tagline}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(project.tech_stack ?? []).map((tech) => (
-                    <span
-                      key={tech}
-                      className="px-2 py-0.5 rounded text-[11px] font-mono font-medium text-blue-400 bg-blue-500/10 border border-blue-500/15"
-                    >
-                      {tech}
+              <div className="flex items-start gap-4 min-w-0 flex-1">
+                {project.preview_image_url && (
+                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/[0.08] flex-shrink-0 bg-white/[0.02] mt-0.5">
+                    <img
+                      src={project.preview_image_url}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-base font-bold text-white/90">{project.title}</h3>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
+                      project.status === "live" && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                      project.status === "completed" && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+                      project.status === "development" && "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    )}>
+                      {project.status}
                     </span>
-                  ))}
+                    {project.is_featured && (
+                      <Star size={14} className="text-amber-400 fill-amber-400" />
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-400 mb-3">{project.tagline}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(project.tech_stack ?? []).map((tech) => (
+                      <span
+                        key={tech}
+                        className="px-2 py-0.5 rounded text-[11px] font-mono font-medium text-blue-400 bg-blue-500/10 border border-blue-500/15"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -340,6 +407,60 @@ export default function ProjectsPage() {
               rows={3}
               className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 outline-none focus:border-blue-500/50 transition-colors resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Preview Image / Dashboard Screenshot</label>
+            <div className="flex gap-2">
+              <input
+                value={form.preview_image_url ?? ""}
+                onChange={(e) => setForm({ ...form, preview_image_url: e.target.value })}
+                placeholder="https://... or upload/select a file"
+                className="flex-1 px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/90 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-colors"
+              />
+              <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={imageUploading}
+                className="px-4 py-2.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-sm font-semibold text-white/90 border border-white/[0.08] transition-colors flex items-center gap-2"
+              >
+                {imageUploading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Upload size={16} />
+                )}
+                Upload
+              </button>
+            </div>
+            {form.preview_image_url && (
+              <div className="mt-2 relative rounded-lg border border-white/[0.08] overflow-hidden max-h-32 group flex items-center justify-between p-2 bg-white/[0.02]">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={form.preview_image_url}
+                    alt="Preview"
+                    className="w-16 h-10 object-cover rounded border border-white/[0.08]"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=100&auto=format&fit=crop&q=60";
+                    }}
+                  />
+                  <span className="text-xs text-slate-400 truncate max-w-xs">{form.preview_image_url}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, preview_image_url: "" })}
+                  className="p-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

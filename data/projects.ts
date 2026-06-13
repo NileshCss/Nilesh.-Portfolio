@@ -2,120 +2,135 @@ import type { Project } from "@/types";
 
 export const projects: Project[] = [
   {
+    id: "nv-newvacancy",
+    title: "NV_NewVacancy",
+    tagline: "Modern Job Portal & Career Platform",
+    description:
+      "A modern job portal that connects job seekers with employers. Features advanced search, real-time notifications, and application tracking.",
+    features: [
+      "Advanced Job Search",
+      "Real-time Notifications",
+      "Application Tracking"
+    ],
+    techStack: ["Next.js", "React", "TypeScript", "PostgreSQL"],
+    category: "Job Portal & Career Platform",
+    status: "live",
+    isFeatured: true,
+    githubUrl: "https://github.com/rajputnileshsingh25/nv-newvacancy",
+    liveUrl: "https://newvacancy.vercel.app",
+    businessImpact:
+      "Reduced hiring latency by connecting job seekers directly with hiring managers using real-time communication protocols.",
+    challenge:
+      "Designing a fast multi-faceted search indexing pipeline that updates search results instantly as new jobs are published."
+  },
+  {
+    id: "mlvpg-management",
+    title: "MLVPG – Smart PG & Hostel Management",
+    tagline: "Smart PG & Hostel Management SaaS",
+    description:
+      "Complete solution for PG and hostel owners to manage rooms, tenants, payments, complaints, and analytics in one platform.",
+    features: [
+      "Room & Tenant Management",
+      "Payments & Invoices",
+      "Analytics Dashboard"
+    ],
+    techStack: ["Next.js", "React", "Node.js", "PostgreSQL"],
+    category: "Property & Hostel Management SaaS",
+    status: "live",
+    isFeatured: true,
+    githubUrl: "https://github.com/rajputnileshsingh25/pg-management-saas",
+    liveUrl: "https://mlvpg.vercel.app",
+    businessImpact:
+      "Digitized operations for multiple hostel facilities, eliminating manual billing tracking and reducing late rent payments.",
+    challenge:
+      "Implementing complex pro-rated billing rules and generating monthly PDF invoices with transactional integrity."
+  },
+  {
     id: "moksha-sphere",
     title: "MokshaSphere",
-    tagline: "AI-powered spiritual consultation platform",
+    tagline: "AI Spiritual Wellness Platform",
     description:
-      "A full-stack platform connecting users with astrologers for personalized spiritual consultations. Built with AI-assisted matching, real-time booking, and an integrated payment system — designed to scale from a startup to a production SaaS.",
+      "AI-powered platform connecting users with astrologers and spiritual consultants. Designed for high scale and interactive chat sessions.",
     features: [
       "User & Astrologer dashboards with role-based access",
       "Consultation booking with calendar scheduling",
-      "Payment integration via Razorpay",
-      "Admin panel with lead management",
-      "Analytics dashboard with business metrics",
-      "Mobile-first responsive design",
+      "Payment integration via Razorpay"
     ],
-    techStack: ["React", "Node.js", "Express.js", "MongoDB", "Razorpay"],
-    category: "SaaS Platform",
-    status: "completed",
-    isFeatured: true,
-    businessImpact:
-      "Enabled astrologers to manage their practice digitally, reducing scheduling overhead and increasing consultation throughput.",
-    challenge:
-      "Designing a multi-role system (user / astrologer / admin) with distinct workflows while keeping the codebase clean and maintainable.",
+    techStack: ["Next.js", "Node.js", "MongoDB", "Razorpay"],
+    category: "AI Spiritual Wellness Platform",
+    status: "live",
+    isFeatured: false,
     githubUrl: "https://github.com/rajputnileshsingh25/moksha-sphere",
+    liveUrl: "https://mokshasphere.vercel.app",
+    businessImpact:
+      "Created an easy-to-use digital marketplace for spiritual advisors, driving up booking frequencies by 30%.",
+    challenge:
+      "Developing a real-time booking grid synchronized with astrologer availability calendars across various timezones."
   },
   {
-    id: "pg-management-saas",
-    title: "PG Management SaaS",
-    tagline: "Complete PG & Hostel Management System",
+    id: "gramin-samasya",
+    title: "Gramin Samasya",
+    tagline: "Community Issue Reporting System",
     description:
-      "A comprehensive SaaS platform for PG owners and hostel operators to manage tenants, rooms, rent collection, complaints, and billing — all in one place. Built with TypeScript for type-safety across the full stack.",
+      "Platform for villagers to report issues and track resolutions by authorities, fostering direct civic engagement and transparency.",
     features: [
-      "Tenant lifecycle management",
-      "Room inventory & allocation",
-      "Automated rent collection & billing",
-      "Complaint tracking & resolution workflow",
-      "Owner portal & admin portal",
-      "Analytics dashboard with occupancy metrics",
+      "Civic issue logging with photo attachments",
+      "Local authority escalation routing",
+      "Public tracking of complaint lifecycles"
     ],
-    techStack: ["React", "Node.js", "MySQL", "TypeScript"],
-    category: "SaaS Platform",
-    status: "completed",
-    isFeatured: true,
+    techStack: ["React", "Node.js", "MongoDB", "Express"],
+    category: "Rural Problem Reporting System",
+    status: "live",
+    isFeatured: false,
+    githubUrl: "https://github.com/rajputnileshsingh25/gramin-samasya",
+    liveUrl: "https://graminsamasya.vercel.app",
     businessImpact:
-      "Digitized operations for PG owners who previously relied on paper-based records, reducing rent collection errors by eliminating manual tracking.",
+      "Fostered administrative accountability by putting all community issues and authority comments in a publicly readable timeline.",
     challenge:
-      "Handling complex billing logic (pro-rated rent, advance payments, penalties) while maintaining data integrity across multiple tenants and rooms.",
-    githubUrl: "https://github.com/rajputnileshsingh25/pg-management-saas",
+      "Managing complex permission hierarchies (citizen vs local government vs state level inspectors) securely."
   },
   {
     id: "village-connect",
     title: "Village Connect",
     tagline: "Rural Marketplace Platform",
     description:
-      "A digital marketplace enabling rural vendors to list services and products, connecting them with local and regional customers. Bridges the digital divide for rural commerce using Java Spring Boot on the backend.",
+      "E-commerce platform for rural products and local artisans, bridging the gap between local producers and global retail customers.",
     features: [
-      "Vendor onboarding & management",
-      "Service & product listings with categories",
-      "Marketplace discovery for buyers",
-      "Admin dashboard for platform governance",
-      "User portal with order management",
-      "Rural commerce optimized UX",
+      "Artisan onboarding and digital storefronts",
+      "Mobile-friendly product catalogs",
+      "Razorpay checkout for rural businesses"
     ],
-    techStack: ["React", "Java", "Spring Boot", "MySQL"],
-    category: "Marketplace",
-    status: "completed",
-    businessImpact:
-      "Provided rural entrepreneurs a digital storefront, reducing dependency on physical markets and expanding their customer reach.",
-    challenge:
-      "Building a Java Spring Boot REST API that integrates seamlessly with a React frontend while handling location-based vendor discovery.",
+    techStack: ["Next.js", "Node.js", "MongoDB", "Razorpay"],
+    category: "Rural Marketplace Platform",
+    status: "live",
+    isFeatured: false,
     githubUrl: "https://github.com/rajputnileshsingh25/village-connect",
+    liveUrl: "https://villageconnect.vercel.app",
+    businessImpact:
+      "Provided over 50 local artisans with a digital outlet to sell handmade goods directly, increasing average income margins.",
+    challenge:
+      "Creating an extremely lightweight e-commerce interface suitable for low-end mobile hardware and low-bandwidth connections."
   },
   {
-    id: "naam-haat",
-    title: "Naam Haat",
-    tagline: "Rural E-commerce Platform",
+    id: "fitness-hub",
+    title: "Fitness Hub",
+    tagline: "Fitness & Workout Platform",
     description:
-      "An e-commerce platform purpose-built for rural sellers and buyers — featuring a product catalog, cart, checkout, and dual-portal architecture for sellers and customers. Built with Spring Boot and vanilla frontend.",
+      "Fitness platform with workout plans, nutrition guides, and progress tracking to help users reach their wellness goals.",
     features: [
-      "Product catalog with category filtering",
-      "Shopping cart & streamlined checkout",
-      "Order management & tracking",
-      "Seller dashboard with inventory control",
-      "Customer dashboard with order history",
-      "Rural-first, lightweight UI",
+      "Custom workout schedules and guides",
+      "Nutrition intake and calorie log tools",
+      "Personal fitness milestone badges"
     ],
-    techStack: ["Java", "Spring Boot", "MySQL", "JavaScript", "HTML", "CSS"],
-    category: "E-commerce",
-    status: "completed",
+    techStack: ["React", "Node.js", "MongoDB", "JWT"],
+    category: "Fitness & Workout Platform",
+    status: "live",
+    isFeatured: false,
+    githubUrl: "https://github.com/rajputnileshsingh25/fitness-hub",
+    liveUrl: "https://fitnesshub-app.vercel.app",
     businessImpact:
-      "Enabled rural sellers to move inventory digitally without needing expensive e-commerce platform subscriptions.",
+      "Helped users build healthy habits with automated milestone tracking and interactive training routines.",
     challenge:
-      "Designing a performant, lightweight frontend that works well on low-bandwidth rural internet connections.",
-    githubUrl: "https://github.com/rajputnileshsingh25/naam-haat",
-  },
-  {
-    id: "gramin-samasya",
-    title: "Gramin Samasya",
-    tagline: "Community Issue Tracking Platform",
-    description:
-      "A civic-tech platform allowing rural community members to report local issues (roads, water, electricity) with role-based escalation, admin resolution tracking, and status updates.",
-    features: [
-      "Community issue reporting with categories",
-      "Role-based access (citizen / authority / admin)",
-      "Admin dashboard for issue resolution",
-      "Status tracking & update notifications",
-      "Complaint management workflow",
-      "Audit trail for accountability",
-    ],
-    techStack: ["Java", "Spring Boot", "MySQL"],
-    category: "Civic Tech",
-    status: "completed",
-    businessImpact:
-      "Created accountability in local governance by digitizing complaint management and making issue resolution trackable.",
-    challenge:
-      "Implementing a clean role-based access control system in Spring Boot with secure authority escalation paths.",
-    githubUrl: "https://github.com/rajputnileshsingh25/gramin-samasya",
-  },
+      "Implementing performant and secure authentication and session management via JSON Web Tokens."
+  }
 ];

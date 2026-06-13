@@ -80,6 +80,7 @@ export async function getProjects(): Promise<Project[]> {
       isFeatured: d.is_featured ?? false,
       businessImpact: d.business_impact || undefined,
       challenge: d.challenge || undefined,
+      previewImageUrl: d.preview_image_url || null,
     }));
   } catch (e) {
     console.warn("Failed to fetch projects from Supabase, falling back to static:", e);
