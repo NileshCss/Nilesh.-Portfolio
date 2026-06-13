@@ -54,22 +54,7 @@ export function ProjectsSection({ projects: projectsList }: ProjectsSectionProps
       id="projects"
       className="relative w-full py-20 px-4 sm:px-6 lg:px-8 bg-[#f8fafc] dark:bg-[#0a0a0f] text-[#0f172a] dark:text-[#f8fafc] transition-colors duration-300 overflow-x-hidden"
     >
-      {/* Floating Toggle Button (visible top right on mobile fixed, or absolute on larger viewports) */}
-      {mounted && (
-        <div className="fixed sm:absolute top-4 right-4 z-50">
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="flex items-center justify-center w-11 h-11 rounded-full border transition-all duration-300 active:scale-95 shadow-md bg-white border-[#cbd5e1] text-[#0f172a] hover:bg-[#f1f5f9] dark:bg-[#111118] dark:border-[#1e1e2e] dark:text-[#f8fafc] dark:hover:bg-[#1a1a25] dark:hover:border-[#3b82f6]"
-          >
-            {isDarkMode ? (
-              <Sun className="w-5 h-5 text-amber-400" />
-            ) : (
-              <Moon className="w-5 h-5 text-indigo-600" />
-            )}
-          </button>
-        </div>
-      )}
+
 
       <div className="max-w-[1200px] mx-auto">
         <motion.div
