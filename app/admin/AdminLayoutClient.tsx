@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sidebar } from "@/components/admin/Sidebar";
@@ -8,18 +8,29 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+export interface AdminNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  reference_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [userEmail, setUserEmail] = useState<string>();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
   const { setTheme } = useTheme();
 
-  // Set admin default theme to dark on first mount & handle responsive layout
+  // ── Theme & responsive layout ──────────────────────────────────────────────
   useEffect(() => {
     setMounted(true);
     const stored = localStorage.getItem("theme");
@@ -30,11 +41,7 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setCollapsed(true); // Close by default on mobile
-      } else {
-        setCollapsed(false); // Open by default on desktop
-      }
+      setCollapsed(mobile);
     };
 
     handleResize();
@@ -42,39 +49,92 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [setTheme]);
 
+  // ── Get logged-in user ─────────────────────────────────────────────────────
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) setUserEmail(user.email ?? undefined);
     };
     getUser();
   }, [supabase]);
 
-  useEffect(() => {
-    const fetchUnread = async () => {
-      const { count } = await supabase
-        .from("contact_messages")
-        .select("*", { count: "exact", head: true })
-        .eq("is_read", false);
-      setUnreadCount(count ?? 0);
-    };
-    fetchUnread();
+  // ── Fetch notifications from API (server-side, auth-protected) ────────────
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/notifications");
+      if (!res.ok) return; // user might not be authed yet
+      const json = await res.json();
+      setNotifications(json.notifications ?? []);
+      setUnreadCount(json.unreadCount ?? 0);
+    } catch {
+      // silently fail — user may not be authenticated
+    }
+  }, []);
 
-    // Realtime subscription for new messages
-    const channel = supabase
-      .channel("admin-messages")
+  // ── Initial fetch + realtime for both tables ───────────────────────────────
+  useEffect(() => {
+    fetchNotifications();
+
+    // Realtime: new contact_messages → refetch notifications
+    const msgChannel = supabase
+      .channel("admin-layout-contact-messages")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "contact_messages" },
-        () => fetchUnread()
+        () => fetchNotifications()
+      )
+      .subscribe();
+
+    // Realtime: new notifications → refetch
+    const notifChannel = supabase
+      .channel("admin-layout-notifications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => fetchNotifications()
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(msgChannel);
+      supabase.removeChannel(notifChannel);
     };
-  }, [supabase]);
+  }, [supabase, fetchNotifications]);
 
+  // ── Mark a single notification as read ────────────────────────────────────
+  const handleMarkNotificationRead = useCallback(
+    async (id: string) => {
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+
+      await fetch("/api/admin/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    },
+    []
+  );
+
+  // ── Mark all notifications as read ────────────────────────────────────────
+  const handleMarkAllRead = useCallback(async () => {
+    // Optimistic update
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+
+    await fetch("/api/admin/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRead: true }),
+    });
+  }, []);
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/admin/login");
@@ -123,13 +183,13 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Sidebar container */}
-      <div 
+      {/* Sidebar */}
+      <div
         className={cn(
           "fixed top-0 bottom-0 left-0 z-40 transition-all duration-300 ease-out",
           isMobile ? (collapsed ? "-translate-x-full" : "translate-x-0") : ""
         )}
-        style={{ width: isMobile ? 240 : (collapsed ? 72 : 240) }}
+        style={{ width: isMobile ? 240 : collapsed ? 72 : 240 }}
       >
         <Sidebar
           collapsed={isMobile ? false : collapsed}
@@ -142,16 +202,20 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
       {/* Main Container */}
       <div
         className="relative transition-all duration-300 ease-out min-h-screen flex flex-col"
-        style={{ 
-          marginLeft: isMobile ? 0 : (collapsed ? 72 : 240),
-          width: isMobile ? "100%" : `calc(100% - ${collapsed ? 72 : 240}px)` 
+        style={{
+          marginLeft: isMobile ? 0 : collapsed ? 72 : 240,
+          width: isMobile ? "100%" : `calc(100% - ${collapsed ? 72 : 240}px)`,
         }}
       >
-        <AdminHeader 
-          userEmail={userEmail} 
+        <AdminHeader
+          userEmail={userEmail}
           isMobile={isMobile}
           onMenuToggle={() => setCollapsed(!collapsed)}
           onLogout={handleLogout}
+          unreadCount={unreadCount}
+          notifications={notifications}
+          onMarkNotificationRead={handleMarkNotificationRead}
+          onMarkAllRead={handleMarkAllRead}
         />
         <main style={{ padding: isMobile ? "16px 16px" : "24px 32px", flex: 1 }}>
           {children}
@@ -160,4 +224,3 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
