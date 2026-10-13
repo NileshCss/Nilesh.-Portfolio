@@ -176,7 +176,7 @@ export function HeroSection({ personalInfo = personal }: { personalInfo?: Person
                   </div>
                   <div className="min-w-0">
                     <p className="text-[0.75rem] text-foreground-faint font-medium">Location</p>
-                    <p className="text-[0.875rem] text-foreground font-semibold truncate">Bengaluru, India</p>
+                    <p className="text-[0.875rem] text-foreground font-semibold truncate">{personalInfo.location || "Not set"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
