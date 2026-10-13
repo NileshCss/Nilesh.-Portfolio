@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const supabase = createClient();
 
   const fetchInfo = useCallback(async () => {
@@ -40,13 +41,30 @@ export default function SettingsPage() {
     if (!info) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
 
-    const { id, ...payload } = info;
-    await supabase.from("personal_info").update(payload).eq("id", id);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(info),
+      });
 
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        setSaveError(json.error || "Failed to save settings. Please try again.");
+      } else {
+        // Sync local state with what was persisted (triggers reflect DB truth)
+        setInfo(json);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (err: any) {
+      setSaveError(err.message || "Network error — could not reach the server.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const update = (field: keyof PersonalInfo, value: string | boolean) => {
@@ -115,6 +133,20 @@ export default function SettingsPage() {
           )}
         </button>
       </div>
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+          <span className="mt-0.5 shrink-0">⚠</span>
+          <span>{saveError}</span>
+          <button
+            onClick={() => setSaveError(null)}
+            className="ml-auto shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Personal Info Section */}
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
