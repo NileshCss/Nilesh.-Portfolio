@@ -4,7 +4,7 @@ import { experiences } from "@/data/experience";
 import { skillCategories } from "@/data/skills";
 import { achievements } from "@/data/achievements";
 import type { PersonalInfo, Project, Experience, SkillCategory, Achievement } from "@/types";
-import { createServerSupabaseClient } from "./server";
+import { createPublicSupabaseClient } from "./public";
 
 export async function getPersonalInfo(): Promise<PersonalInfo> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,7 +15,7 @@ export async function getPersonalInfo(): Promise<PersonalInfo> {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
       .from("personal_info")
       .select("*")
@@ -56,7 +56,7 @@ export async function getProjects(): Promise<Project[]> {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
       .from("projects")
       .select("*")
@@ -97,10 +97,11 @@ export async function getExperiences(): Promise<Experience[]> {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
       .from("experiences")
       .select("*")
+      .eq("is_visible", true)
       .order("sort_order", { ascending: true });
 
     if (error || !data || data.length === 0) {
@@ -118,12 +119,17 @@ export async function getExperiences(): Promise<Experience[]> {
       domain: d.domain || undefined,
       responsibilities: d.responsibilities || [],
       highlights: d.highlights || [],
+      companyLogoUrl: d.company_logo_url || null,
+      companyLogoStoragePath: d.company_logo_storage_path || null,
+      technologyTags: d.technology_tags || [],
+      isVisible: d.is_visible ?? true,
     }));
   } catch (e) {
     console.warn("Failed to fetch experiences from Supabase, falling back to static:", e);
     return experiences;
   }
 }
+
 
 export async function getSkills(): Promise<SkillCategory[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -134,7 +140,7 @@ export async function getSkills(): Promise<SkillCategory[]> {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createPublicSupabaseClient();
     
     // Fetch categories
     const { data: catData, error: catError } = await supabase
@@ -184,7 +190,7 @@ export async function getAchievements(): Promise<Achievement[]> {
   }
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
       .from("achievements")
       .select("*")

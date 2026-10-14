@@ -1,180 +1,379 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
-import { experiences } from "@/data/experience";
+import { useState } from "react";
+import { motion, type Variants, AnimatePresence } from "framer-motion";
+import { experiences as staticExperiences } from "@/data/experience";
 import type { Experience } from "@/types";
 import { cn } from "@/lib/utils";
 import {
-  Target,
-  Clock,
-  TrendingUp,
-  Users,
-  Shield,
-  Zap,
-  CheckCircle,
-  ShieldCheck,
-  Layers,
-  MessageSquare,
-  BarChart,
-  Heart,
   Check,
-  Briefcase
+  ChevronDown,
+  ChevronUp,
+  Briefcase,
 } from "lucide-react";
 
-const container: Variants = {
+// ── Animation variants ────────────────────────────────────────────────────
+
+const containerVariants: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.12 } },
 };
 
-const item: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, type: "tween" } },
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
 };
 
-const getHighlightInfo = (label: string) => {
-  const map: Record<string, { icon: any; description: string }> = {
-    "High Accuracy": { icon: Target, description: "Precision in policy reviews" },
-    "Timely Delivery": { icon: Clock, description: "SLA compliance" },
-    "Process Improvement": { icon: TrendingUp, description: "Optimized workflows" },
-    "Cross-team Collaboration": { icon: Users, description: "Worked across teams" },
-    "Confidentiality": { icon: Shield, description: "Strict data privacy" },
-    "Performance Focused": { icon: Zap, description: "Achieved KPI targets" },
-    "Data Accuracy": { icon: CheckCircle, description: "High quality standards" },
-    "SLA Compliance": { icon: ShieldCheck, description: "Met turnaround times" },
-    "Multi-tasking": { icon: Layers, description: "Managed multiple priorities" },
-    "Communication": { icon: MessageSquare, description: "Clear client support" },
-    "Analytical Skills": { icon: BarChart, description: "Data validation" },
-    "Client Focused": { icon: Heart, description: "Excellent service" },
-  };
-  
-  return map[label] || { icon: CheckCircle, description: "Key achievement" };
+const headerVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
 };
+
+// ── Company Logo with initials fallback ──────────────────────────────────
+
+function CompanyLogo({
+  company,
+  logoUrl,
+}: {
+  company: string;
+  logoUrl?: string | null;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  const initials = company
+    .split(/[\s&.,]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+  if (logoUrl && !imgError) {
+    return (
+      <div
+        className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-border-base bg-card"
+        aria-hidden="true"
+      >
+        <img
+          src={logoUrl}
+          alt={`${company} logo`}
+          width={48}
+          height={48}
+          className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-base select-none"
+      aria-hidden="true"
+    >
+      {initials || <Briefcase className="w-5 h-5" />}
+    </div>
+  );
+}
+
+// ── Employment type badge ─────────────────────────────────────────────────
+
+function TypeBadge({ type }: { type: Experience["type"] }) {
+  const label =
+    type === "full-time" ? "Full-Time" : type === "freelance" ? "Freelance" : "Contract";
+
+  return (
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap">
+      {label}
+    </span>
+  );
+}
+
+// ── Skeleton card for loading state ──────────────────────────────────────
+
+export function ExperienceCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border-base bg-card p-6 md:p-8 animate-pulse">
+      {/* Header skeleton */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-7">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+          <div className="space-y-2.5">
+            <div className="h-5 w-48 rounded bg-muted" />
+            <div className="h-4 w-32 rounded bg-muted" />
+          </div>
+        </div>
+        <div className="flex flex-col md:items-end gap-2">
+          <div className="h-6 w-20 rounded-full bg-muted" />
+          <div className="h-4 w-36 rounded bg-muted" />
+        </div>
+      </div>
+      {/* Body skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8">
+        <div className="space-y-3">
+          <div className="h-3 w-28 rounded bg-muted" />
+          <div className="space-y-2.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-3">
+                <div className="w-5 h-5 rounded-full bg-muted shrink-0 mt-0.5" />
+                <div className="h-4 flex-1 rounded bg-muted" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="h-3 w-28 rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-9 rounded-xl bg-muted" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Individual experience card ────────────────────────────────────────────
 
 function ExperienceCard({ exp }: { exp: Experience }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const displayedResponsibilities = expanded
+    ? exp.responsibilities
+    : exp.responsibilities.slice(0, 4);
+
+  const hasMore = exp.responsibilities.length > 4;
+
   return (
-    <motion.div
-      variants={item}
-      className="group relative bg-card border border-border-base rounded-2xl overflow-hidden hover:border-blue-500/50 hover:shadow-[0_8px_30px_rgba(37,99,235,0.12)] transition-all duration-300"
+    <motion.article
+      variants={cardVariants}
+      className={cn(
+        "group relative bg-card border border-border-base rounded-2xl overflow-hidden",
+        "hover:border-blue-500/40 hover:shadow-[0_4px_24px_rgba(37,99,235,0.08)]",
+        "transition-all duration-300"
+      )}
+      aria-label={`${exp.role} at ${exp.company}`}
     >
       <div className="p-6 md:p-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800">
-              <Briefcase className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground leading-tight">{exp.role}</h3>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <span className="text-blue-600 dark:text-blue-400 font-semibold">{exp.company}</span>
+        {/* ── Card header ──────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
+          {/* Left: logo + title + company + domain */}
+          <div className="flex items-start gap-4 min-w-0">
+            <CompanyLogo company={exp.company} logoUrl={exp.companyLogoUrl} />
+            <div className="min-w-0">
+              <h3 className="text-lg md:text-xl font-bold text-foreground leading-tight">
+                {exp.role}
+              </h3>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 truncate">
+                  {exp.company}
+                </span>
                 {exp.domain && (
                   <>
-                    <span className="text-foreground-muted/50 hidden sm:inline" aria-hidden="true">•</span>
-                    <span className="text-sm font-medium text-foreground-muted bg-surface px-2 py-0.5 rounded-md border border-border-base">{exp.domain}</span>
+                    <span
+                      className="text-foreground-faint hidden sm:inline"
+                      aria-hidden="true"
+                    >
+                      ·
+                    </span>
+                    <span className="text-xs font-medium text-foreground-muted bg-muted px-2 py-0.5 rounded-md border border-border-base">
+                      {exp.domain}
+                    </span>
                   </>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex flex-col md:items-end gap-2.5">
-            <span
-              className={cn(
-                "inline-flex w-fit text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider",
-                "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-              )}
-            >
-              {exp.type === "full-time" ? "Full-Time" : exp.type}
-            </span>
-            <span className="text-sm text-foreground-faint font-mono font-medium">
-              <time>{exp.startDate}</time> – <time>{exp.endDate}</time>
+
+          {/* Right: badge + dates */}
+          <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:gap-2 shrink-0">
+            <TypeBadge type={exp.type} />
+            <span className="text-xs text-foreground-faint font-mono font-medium whitespace-nowrap">
+              <time dateTime={exp.startDate}>{exp.startDate}</time>
+              {" – "}
+              <time dateTime={exp.endDate}>{exp.endDate}</time>
             </span>
           </div>
         </div>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-8 md:gap-12">
-          {/* Left Column: Responsibilities */}
+        {/* ── Divider ──────────────────────────────────────────────────── */}
+        <div className="h-px bg-border-base mb-7" />
+
+        {/* ── Card body — two column ───────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8">
+          {/* Left: Key Responsibilities */}
           <div>
-            <h4 className="text-xs font-bold text-foreground-faint uppercase tracking-widest mb-4 flex items-center gap-2">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-4">
               Key Responsibilities
             </h4>
-            <ul className="space-y-4" aria-label={`Responsibilities as ${exp.role}`}>
-              {exp.responsibilities.map((resp, i) => (
-                <li key={i} className="flex items-start gap-3 group/item">
-                  <div className="mt-1 shrink-0 p-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 transition-colors group-hover/item:bg-blue-500 group-hover/item:text-white group-hover/item:border-blue-500 dark:group-hover/item:bg-blue-500 dark:group-hover/item:border-blue-500">
-                    <Check className="w-3.5 h-3.5" strokeWidth={3} aria-hidden="true" />
-                  </div>
-                  <span className="text-sm md:text-base text-foreground-muted leading-relaxed">
-                    {resp}
-                  </span>
-                </li>
-              ))}
+            <ul
+              className="space-y-3"
+              aria-label={`Responsibilities as ${exp.role}`}
+            >
+              <AnimatePresence initial={false}>
+                {displayedResponsibilities.map((resp, i) => (
+                  <motion.li
+                    key={i}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex items-start gap-3"
+                  >
+                    <div className="mt-0.5 shrink-0 p-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 transition-colors group-hover:bg-blue-500/10 group-hover:border-blue-400/30">
+                      <Check
+                        className="w-3.5 h-3.5"
+                        strokeWidth={3}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <span className="text-sm text-foreground-muted leading-relaxed">
+                      {resp}
+                    </span>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
             </ul>
+
+            {/* View details toggle */}
+            {hasMore && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                aria-expanded={expanded}
+                className={cn(
+                  "mt-4 inline-flex items-center gap-1.5 text-xs font-semibold",
+                  "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300",
+                  "transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 rounded"
+                )}
+              >
+                {expanded ? (
+                  <>
+                    Show less <ChevronUp className="w-3.5 h-3.5" />
+                  </>
+                ) : (
+                  <>
+                    View {exp.responsibilities.length - 4} more{" "}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* Right Column: Highlights Grid */}
+          {/* Right: Key Contributions */}
           {exp.highlights && exp.highlights.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-foreground-faint uppercase tracking-widest mb-4 flex items-center gap-2">
-                Key Highlights
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-4">
+                Key Contributions
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3">
-                {exp.highlights.map((highlight, i) => {
-                  const { icon: Icon, description } = getHighlightInfo(highlight);
-                  return (
-                    <div
-                      key={i}
-                      className="p-3.5 rounded-xl bg-surface border border-border-base group-hover:border-blue-500/30 transition-colors flex flex-col gap-2"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 shrink-0">
-                          <Icon className="w-4 h-4" aria-hidden="true" />
-                        </div>
-                        <span className="text-sm font-bold text-foreground leading-tight">{highlight}</span>
-                      </div>
-                      <p className="text-xs text-foreground-muted leading-snug pl-9">
-                        {description}
-                      </p>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-col gap-2.5">
+                {exp.highlights.map((label, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl",
+                      "bg-muted border border-border-base",
+                      "group-hover:border-blue-500/20 transition-colors"
+                    )}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                    <span className="text-sm font-medium text-foreground leading-snug">
+                      {label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </div>
+
+        {/* ── Technology tags footer ───────────────────────────────────── */}
+        {exp.technologyTags && exp.technologyTags.length > 0 && (
+          <>
+            <div className="h-px bg-border-base mt-7 mb-5" />
+            <div className="flex flex-wrap gap-2" aria-label="Tools and domains">
+              {exp.technologyTags.map((tag, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium",
+                    "text-foreground-muted bg-muted border border-border-base",
+                    "hover:border-blue-400/30 hover:text-foreground transition-colors"
+                  )}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 
-export function ExperienceSection({ experiences: experiencesList = experiences }: { experiences?: Experience[] }) {
+// ── Main section export ───────────────────────────────────────────────────
+
+export function ExperienceSection({
+  experiences: experiencesList = staticExperiences,
+}: {
+  experiences?: Experience[];
+}) {
+  const visible = experiencesList.filter((e) => e.isVisible !== false);
+
+  if (visible.length === 0) return null;
+
   return (
-    <section id="experience" className="py-24 bg-surface border-t border-border-base" aria-label="Work Experience">
+    <section
+      id="experience"
+      className="py-24 bg-surface border-t border-border-base"
+      aria-label="Work Experience"
+    >
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
-          variants={container}
+          variants={containerVariants}
         >
-          {/* Section Header */}
-          <motion.div variants={item} className="mb-16">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" aria-hidden="true" />
-              <span className="text-sm font-black uppercase tracking-[0.2em] text-blue-600">
+          {/* ── Section header ─────────────────────────────────────────── */}
+          <motion.div variants={headerVariants} className="mb-14">
+            <div className="flex items-center gap-2.5 mb-4">
+              <span
+                className="w-2 h-2 rounded-full bg-blue-600 inline-block"
+                aria-hidden="true"
+              />
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
                 EXPERIENCE
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight mb-5">
-              Where I've worked.
+
+            <h2 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight mb-1">
+              Where I&apos;ve worked.
+              <span
+                className="block h-1 w-16 mt-3 rounded-full bg-blue-600/60"
+                aria-hidden="true"
+              />
             </h2>
-            <p className="text-lg text-foreground-muted max-w-2xl leading-relaxed">
-              A blend of professional operations experience and dedicated client support, ensuring high-quality service, compliance, and impactful results.
+
+            <p className="mt-5 text-base md:text-lg text-foreground-muted max-w-2xl leading-relaxed">
+              A blend of professional operations experience and hands-on product
+              development.
             </p>
           </motion.div>
 
-          <div className="space-y-6">
-            {experiencesList.map((exp) => (
+          {/* ── Cards ──────────────────────────────────────────────────── */}
+          <div className="space-y-5">
+            {visible.map((exp) => (
               <ExperienceCard key={exp.id} exp={exp} />
             ))}
           </div>

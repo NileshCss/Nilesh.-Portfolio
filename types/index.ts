@@ -27,6 +27,10 @@ export interface Experience {
   responsibilities: string[];
   highlights?: string[];
   domain?: string;
+  companyLogoUrl?: string | null;
+  companyLogoStoragePath?: string | null;
+  technologyTags?: string[];
+  isVisible?: boolean;
 }
 
 export interface SkillCategory {

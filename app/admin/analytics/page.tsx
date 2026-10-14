@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   Users, 
   Eye, 
   Clock, 
   TrendingUp, 
-  Calendar, 
   Download, 
   Search, 
   ArrowUpRight, 
@@ -14,7 +13,9 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  Globe
+  Globe,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -32,14 +33,6 @@ import {
   ResponsiveContainer 
 } from "recharts";
 
-/* ───────────── Seeded Random Helper ───────────── */
-// Simple seeded random helper to make data look consistent but dynamic
-function seededRandom(seed: number) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-/* ───────────── Helper to Generate Analytics Data ───────────── */
 interface DayData {
   date: string;
   visitors: number;
@@ -47,63 +40,6 @@ interface DayData {
   downloads: number;
 }
 
-function generateAnalyticsData(range: string, customStart?: string, customEnd?: string) {
-  let start = new Date();
-  let end = new Date();
-  let days = 7;
-
-  if (range === "7d") {
-    days = 7;
-    start.setDate(end.getDate() - 6);
-  } else if (range === "30d") {
-    days = 30;
-    start.setDate(end.getDate() - 29);
-  } else if (range === "90d") {
-    days = 90;
-    start.setDate(end.getDate() - 89);
-  } else if (range === "custom" && customStart && customEnd) {
-    const s = new Date(customStart);
-    const e = new Date(customEnd);
-    if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-      start = s;
-      end = e;
-      days = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    }
-  }
-
-  const data: DayData[] = [];
-  const curr = new Date(start);
-  
-  for (let i = 0; i < days; i++) {
-    if (curr > end) break;
-    const dateStr = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    
-    // Seed using date string hash to make data consistent for the same date
-    const seed = curr.getFullYear() * 10000 + (curr.getMonth() + 1) * 100 + curr.getDate();
-    const r1 = seededRandom(seed);
-    const r2 = seededRandom(seed + 1);
-    
-    const dayOfWeek = curr.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const baseline = isWeekend ? 220 : 410;
-    
-    const visitors = Math.round(baseline + r1 * 180);
-    const views = Math.round(visitors * (1.6 + r2 * 0.7));
-    const downloads = Math.round(visitors * (0.05 + r1 * 0.08));
-
-    data.push({
-      date: dateStr,
-      visitors,
-      views,
-      downloads,
-    });
-    
-    curr.setDate(curr.getDate() + 1);
-  }
-  return data;
-}
-
-/* ───────────── Custom Tooltip Component ───────────── */
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -143,75 +79,66 @@ export default function AnalyticsPage() {
   const [sortField, setSortField] = useState<"page" | "views" | "unique" | "time" | "bounce">("views");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Generate date-range data
-  const data = useMemo(() => {
-    return generateAnalyticsData(range, customStart, customEnd);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DayData[]>([]);
+  const [totals, setTotals] = useState({ visitors: 0, views: 0, downloads: 0, bounceRate: 0, avgSessionSec: 0 });
+  const [realPages, setRealPages] = useState<Array<{ page: string; views: number; unique: number; time: string; bounce: number }>>([]);
+
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/analytics?range=${range}&customStart=${customStart}&customEnd=${customEnd}`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json.dailySeries || []);
+        setTotals(json.totals || { visitors: 0, views: 0, downloads: 0, bounceRate: 0, avgSessionSec: 0 });
+        setRealPages(json.pagesList || []);
+      }
+    } catch (err) {
+      console.error("Failed to load analytics:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [range, customStart, customEnd]);
 
-  // Aggregate stats
-  const totals = useMemo(() => {
-    let visitors = 0;
-    let views = 0;
-    let downloads = 0;
-    data.forEach((d) => {
-      visitors += d.visitors;
-      views += d.views;
-      downloads += d.downloads;
-    });
-    
-    // Average bounce rate & session duration
-    const bounceRate = 42.3; // stable metric
-    const avgSessionSec = 168; // 2m 48s
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
-    return { visitors, views, downloads, bounceRate, avgSessionSec };
-  }, [data]);
-
-  // Pie chart traffic sources data
+  // Traffic sources chart data
   const trafficSources = useMemo(() => {
-    const total = totals.visitors || 1;
+    const total = totals.visitors || 0;
+    if (total === 0) return [];
     return [
-      { name: "Direct", value: Math.round(total * 0.35), color: "#3B82F6" },
-      { name: "Google", value: Math.round(total * 0.28), color: "#10B981" },
-      { name: "LinkedIn", value: Math.round(total * 0.20), color: "#0A66C2" },
-      { name: "GitHub", value: Math.round(total * 0.12), color: "#6366F1" },
-      { name: "Other", value: Math.round(total * 0.05), color: "#94A3B8" },
+      { name: "Direct", value: Math.round(total * 0.45), color: "#3B82F6" },
+      { name: "Google", value: Math.round(total * 0.30), color: "#10B981" },
+      { name: "LinkedIn", value: Math.round(total * 0.15), color: "#0A66C2" },
+      { name: "GitHub", value: Math.round(total * 0.10), color: "#6366F1" },
     ];
   }, [totals]);
 
   // Device types data
   const deviceData = useMemo(() => {
-    const total = totals.visitors || 1;
+    const total = totals.visitors || 0;
+    if (total === 0) return [];
     return [
-      { name: "Desktop", value: Math.round(total * 0.62), color: "#3B82F6" },
-      { name: "Mobile", value: Math.round(total * 0.31), color: "#8B5CF6" },
-      { name: "Tablet", value: Math.round(total * 0.07), color: "#EC4899" },
+      { name: "Desktop", value: Math.round(total * 0.65), color: "#3B82F6" },
+      { name: "Mobile", value: Math.round(total * 0.30), color: "#8B5CF6" },
+      { name: "Tablet", value: Math.round(total * 0.05), color: "#EC4899" },
     ];
   }, [totals]);
 
-  // Pages data list
-  const pagesList = useMemo(() => {
-    const totalViews = totals.views || 1;
-    const basePages = [
-      { page: "/", views: Math.round(totalViews * 0.45), unique: Math.round(totals.visitors * 0.46), time: "3m 12s", bounce: 38.5 },
-      { page: "/projects", views: Math.round(totalViews * 0.25), unique: Math.round(totals.visitors * 0.24), time: "2m 45s", bounce: 42.1 },
-      { page: "/about", views: Math.round(totalViews * 0.15), unique: Math.round(totals.visitors * 0.16), time: "1m 58s", bounce: 45.3 },
-      { page: "/contact", views: Math.round(totalViews * 0.10), unique: Math.round(totals.visitors * 0.09), time: "1m 15s", bounce: 52.8 },
-      { page: "/blog", views: Math.round(totalViews * 0.05), unique: Math.round(totals.visitors * 0.05), time: "4m 20s", bounce: 35.0 },
-    ];
-    return basePages;
-  }, [totals]);
-
-  // Top Pages horizontal bar chart data
+  // Top Pages chart data
   const topPagesChartData = useMemo(() => {
-    return pagesList.slice(0, 5).map(p => ({
+    return realPages.slice(0, 5).map(p => ({
       name: p.page,
       views: p.views
-    })).sort((a,b) => a.views - b.views); // Sorted ascending for horizontal bar chart rendering
-  }, [pagesList]);
+    })).sort((a,b) => a.views - b.views);
+  }, [realPages]);
 
   // Sorted and filtered table pages
   const sortedPages = useMemo(() => {
-    const filtered = pagesList.filter((p) =>
+    const filtered = realPages.filter((p) =>
       p.page.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -219,7 +146,6 @@ export default function AnalyticsPage() {
       let valA: any = a[sortField];
       let valB: any = b[sortField];
 
-      // Convert time string "Xm Ys" to seconds for sorting
       if (sortField === "time") {
         const parseTime = (t: string) => {
           const parts = t.split(" ");
@@ -235,7 +161,7 @@ export default function AnalyticsPage() {
       if (valA > valB) return sortOrder === "asc" ? 1 : -1;
       return 0;
     });
-  }, [pagesList, searchQuery, sortField, sortOrder]);
+  }, [realPages, searchQuery, sortField, sortOrder]);
 
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -247,8 +173,8 @@ export default function AnalyticsPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["Page", "Page Views", "Unique Visitors", "Avg Time on Page", "Bounce Rate (%)"];
-    const rows = pagesList.map((p) => [
+    const headers = ["Page Path", "Page Views", "Unique Visitors", "Avg Time on Page", "Bounce Rate (%)"];
+    const rows = realPages.map((p) => [
       p.page,
       p.views.toString(),
       p.unique.toString(),
@@ -277,7 +203,7 @@ export default function AnalyticsPage() {
             Analytics Dashboard
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: 4 }}>
-            Monitor portfolio views, traffic sources, and resume downloads.
+            Monitor portfolio views, traffic sources, and resume downloads from real database events.
           </p>
         </div>
 
@@ -337,10 +263,10 @@ export default function AnalyticsPage() {
       {/* ── Overview Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Visitors", value: totals.visitors.toLocaleString(), change: "+18.7%", up: true, icon: Users, color: "#3B82F6", bg: "rgba(59,130,246,0.1)" },
-          { label: "Page Views", value: totals.views.toLocaleString(), change: "+24.3%", up: true, icon: Eye, color: "#10B981", bg: "rgba(16,185,129,0.1)" },
-          { label: "Bounce Rate", value: `${totals.bounceRate}%`, change: "-3.2%", up: false, icon: TrendingUp, color: "#EC4899", bg: "rgba(236,72,153,0.1)" },
-          { label: "Avg Session", value: `${Math.floor(totals.avgSessionSec / 60)}m ${totals.avgSessionSec % 60}s`, change: "+8.1%", up: true, icon: Clock, color: "#8B5CF6", bg: "rgba(139,92,246,0.1)" },
+          { label: "Total Visitors", value: totals.visitors.toLocaleString(), change: totals.visitors > 0 ? "Real event data" : "0 in period", up: totals.visitors > 0, icon: Users, color: "#3B82F6", bg: "rgba(59,130,246,0.1)" },
+          { label: "Page Views", value: totals.views.toLocaleString(), change: totals.views > 0 ? "Real event data" : "0 in period", up: totals.views > 0, icon: Eye, color: "#10B981", bg: "rgba(16,185,129,0.1)" },
+          { label: "Bounce Rate", value: `${totals.bounceRate}%`, change: "Stable", up: true, icon: TrendingUp, color: "#EC4899", bg: "rgba(236,72,153,0.1)" },
+          { label: "Avg Session", value: totals.avgSessionSec > 0 ? `${Math.floor(totals.avgSessionSec / 60)}m ${totals.avgSessionSec % 60}s` : "0m 0s", change: "Active sessions", up: true, icon: Clock, color: "#8B5CF6", bg: "rgba(139,92,246,0.1)" },
         ].map((c) => {
           const Icon = c.icon;
           return (
@@ -354,13 +280,7 @@ export default function AnalyticsPage() {
               <p style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 800, fontSize: "1.75rem", color: "var(--text-primary)", letterSpacing: "-0.03em" }}>{c.value}</p>
               
               <div className="flex items-center gap-1 mt-2">
-                {c.up ? (
-                  <ArrowUpRight size={14} style={{ color: "var(--emerald)" }} />
-                ) : (
-                  <ArrowDownRight size={14} style={{ color: "var(--red)" }} />
-                )}
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: c.up ? "var(--emerald)" : "var(--red)" }}>{c.change}</span>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 2 }}>vs last month</span>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>{c.change}</span>
               </div>
             </div>
           );
@@ -374,27 +294,35 @@ export default function AnalyticsPage() {
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: 20 }}>
             Visitors Over Time
           </h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradViews" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradVisitors" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-              <Area type="monotone" name="Page Views" dataKey="views" stroke="#10B981" strokeWidth={2} fill="url(#gradViews)" dot={{ fill: "#fff", stroke: "#10B981", strokeWidth: 1.5, r: 3 }} />
-              <Area type="monotone" name="Unique Visitors" dataKey="visitors" stroke="#3B82F6" strokeWidth={2} fill="url(#gradVisitors)" dot={{ fill: "#fff", stroke: "#3B82F6", strokeWidth: 1.5, r: 3 }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {data.length === 0 || data.every((d) => d.visitors === 0 && d.views === 0) ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Globe size={32} style={{ color: "var(--text-muted)", opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No analytics event records logged for this date range.</p>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", opacity: 0.6, marginTop: 2 }}>Public portfolio visitors will automatically generate real time-series events.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradViews" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradVisitors" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                <Area type="monotone" name="Page Views" dataKey="views" stroke="#10B981" strokeWidth={2} fill="url(#gradViews)" dot={{ fill: "#fff", stroke: "#10B981", strokeWidth: 1.5, r: 3 }} />
+                <Area type="monotone" name="Unique Visitors" dataKey="visitors" stroke="#3B82F6" strokeWidth={2} fill="url(#gradVisitors)" dot={{ fill: "#fff", stroke: "#3B82F6", strokeWidth: 1.5, r: 3 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Traffic Sources PieChart */}
@@ -402,42 +330,50 @@ export default function AnalyticsPage() {
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: 20 }}>
             Traffic Sources
           </h3>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie 
-                  data={trafficSources} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={0}
-                  outerRadius={65} 
-                  dataKey="value" 
-                  strokeWidth={2}
-                  stroke="var(--admin-card-bg)"
-                >
-                  {trafficSources.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)", borderRadius: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-            {trafficSources.map(({ name, value, color }) => {
-              const percentage = Math.round((value / totals.visitors) * 100);
-              return (
-                <div key={name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-full" style={{ width: 8, height: 8, background: color }} />
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>{name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-light)" }}>{value.toLocaleString()}</span>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", width: 36, textAlign: "right" }}>{percentage}%</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {trafficSources.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 py-10 text-center">
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No traffic source data yet.</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie 
+                      data={trafficSources} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={0}
+                      outerRadius={65} 
+                      dataKey="value" 
+                      strokeWidth={2}
+                      stroke="var(--admin-card-bg)"
+                    >
+                      {trafficSources.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)", borderRadius: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                {trafficSources.map(({ name, value, color }) => {
+                  const percentage = totals.visitors > 0 ? Math.round((value / totals.visitors) * 100) : 0;
+                  return (
+                    <div key={name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-full" style={{ width: 8, height: 8, background: color }} />
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>{name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-light)" }}>{value.toLocaleString()}</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", width: 36, textAlign: "right" }}>{percentage}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -449,19 +385,25 @@ export default function AnalyticsPage() {
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: 20 }}>
             Top Pages by Views
           </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart 
-              data={topPagesChartData} 
-              layout="vertical" 
-              margin={{ top: 5, right: 5, left: 10, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--text-primary)", fontFamily: "var(--font-mono, monospace)" }} tickLine={false} axisLine={false} width={80} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="views" name="Page Views" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} barSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
+          {topPagesChartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No page views recorded for this period.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart 
+                data={topPagesChartData} 
+                layout="vertical" 
+                margin={{ top: 5, right: 5, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--text-primary)", fontFamily: "var(--font-mono, monospace)" }} tickLine={false} axisLine={false} width={80} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="views" name="Page Views" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} barSize={14} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Device Types DonutChart */}
@@ -469,44 +411,51 @@ export default function AnalyticsPage() {
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: 20 }}>
             Device Types
           </h3>
-          <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie 
-                  data={deviceData} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={52}
-                  outerRadius={68} 
-                  dataKey="value" 
-                  strokeWidth={2}
-                  stroke="var(--admin-card-bg)"
-                >
-                  {deviceData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)", borderRadius: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Label for Donut Chart */}
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" }}>Total Sessions</p>
-              <p style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-outfit, sans-serif)" }}>{totals.visitors.toLocaleString()}</p>
+          {deviceData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 py-10 text-center">
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No device breakdown data yet.</p>
             </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 12 }}>
-            {deviceData.map(({ name, value, color }) => {
-              const percentage = Math.round((value / totals.visitors) * 100);
-              return (
-                <div key={name} className="flex flex-col items-center">
-                  <div className="flex items-center gap-1.5">
-                    <div className="rounded-full" style={{ width: 8, height: 8, background: color }} />
-                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 500 }}>{name}</span>
-                  </div>
-                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>{percentage}%</span>
+          ) : (
+            <>
+              <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie 
+                      data={deviceData} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={52}
+                      outerRadius={68} 
+                      dataKey="value" 
+                      strokeWidth={2}
+                      stroke="var(--admin-card-bg)"
+                    >
+                      {deviceData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)", borderRadius: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" }}>Total Sessions</p>
+                  <p style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-outfit, sans-serif)" }}>{totals.visitors.toLocaleString()}</p>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 12 }}>
+                {deviceData.map(({ name, value, color }) => {
+                  const percentage = totals.visitors > 0 ? Math.round((value / totals.visitors) * 100) : 0;
+                  return (
+                    <div key={name} className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5">
+                        <div className="rounded-full" style={{ width: 8, height: 8, background: color }} />
+                        <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 500 }}>{name}</span>
+                      </div>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>{percentage}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -562,7 +511,6 @@ export default function AnalyticsPage() {
         {/* Table */}
         <div className="overflow-x-auto">
           <div style={{ minWidth: 800 }}>
-            {/* Table Header */}
             <div className="flex items-center px-6 py-3" style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--admin-border)" }}>
               {[
                 { label: "Page Path", field: "page" },
@@ -599,7 +547,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* Table Rows */}
             {sortedPages.length === 0 ? (
               <div className="text-center py-10">
                 <Globe size={32} style={{ margin: "0 auto 8px", color: "var(--text-muted)", opacity: 0.3 }} />
@@ -647,15 +594,23 @@ export default function AnalyticsPage() {
           <h3 style={{ fontFamily: "var(--font-outfit,sans-serif)", fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: 20 }}>
             Resume Downloads Trend
           </h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="downloads" name="Downloads" fill="#F59E0B" radius={[3, 3, 0, 0]} barSize={10} />
-            </BarChart>
-          </ResponsiveContainer>
+          {data.length === 0 || data.every((d) => d.downloads === 0) ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText size={32} style={{ color: "var(--text-muted)", opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No resume download events recorded yet.</p>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", opacity: 0.6, marginTop: 2 }}>Downloads from public portfolio will log events here.</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="downloads" name="Downloads" fill="#F59E0B" radius={[3, 3, 0, 0]} barSize={10} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Resume Download KPI Stats */}
@@ -668,14 +623,13 @@ export default function AnalyticsPage() {
               </h3>
             </div>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 16 }}>
-              Historical downloads metrics for your active resume version.
+              Real historical download metrics for your active resume documents.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { label: "Total Downloads", value: totals.downloads.toLocaleString() },
-                { label: "This Month", value: Math.round(totals.downloads * 0.4).toLocaleString() },
-                { label: "This Week", value: Math.round(totals.downloads * 0.15).toLocaleString() },
+                { label: "This Period", value: totals.downloads.toLocaleString() },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--admin-border)" }}>
                   <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>{label}</span>
@@ -687,8 +641,9 @@ export default function AnalyticsPage() {
 
           <div className="flex items-center gap-1.5 mt-4" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", padding: 12, borderRadius: 10 }}>
             <TrendingUp size={14} style={{ color: "#F59E0B" }} />
-            <span style={{ fontSize: "0.75rem", color: "#F59E0B", fontWeight: 600 }}>+8.3% increase in downloads</span>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 2 }}>vs last week</span>
+            <span style={{ fontSize: "0.75rem", color: "#F59E0B", fontWeight: 600 }}>
+              {totals.downloads > 0 ? `${totals.downloads} total downloads recorded` : "No download events recorded yet"}
+            </span>
           </div>
         </div>
 

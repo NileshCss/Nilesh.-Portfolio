@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,13 +11,16 @@ import {
   Download,
   Mail,
   Pencil,
-  Trash2,
   Plus,
   Upload,
   Briefcase,
   UserCog,
   CheckCircle2,
   FileText,
+  AlertTriangle,
+  RefreshCw,
+  X,
+  HelpCircle,
 } from "lucide-react";
 import {
   XAxis,
@@ -30,64 +33,91 @@ import {
 } from "recharts";
 
 /* ───────────── Types ───────────── */
-interface DashboardStats {
-  projects: number;
-  visitors: number;
-  profileViews: number;
-  resumeDownloads: number;
-  totalMessages: number;
-  unreadMessages: number;
-}
+interface DashboardAPIData {
+  stats: {
+    totalProjects: number;
+    publishedProjects: number;
+    draftProjects: number;
+    projectChangeStr: string;
+    projectChangeColor: string;
 
-interface RecentMessage {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  subject?: string;
-  is_read: boolean;
-  created_at: string;
-}
+    totalVisitors: number;
+    currVisitors: number;
+    visitorChangeStr: string;
+    visitorChangeColor: string;
 
-interface RecentProject {
-  id: string;
-  title: string;
-  status: string;
-  updated_at: string;
-  live_url: string | null;
-  category: string;
-}
+    totalProfileViews: number;
+    currViews: number;
+    viewsChangeStr: string;
+    viewsChangeColor: string;
 
-/* ───────────── Static mock data ───────────── */
-const visitorData = [
-  { day: "May 18", visitors: 450 },
-  { day: "May 19", visitors: 600 },
-  { day: "May 20", visitors: 580 },
-  { day: "May 21", visitors: 650 },
-  { day: "May 22", visitors: 750 },
-  { day: "May 23", visitors: 900 },
-  { day: "May 24", visitors: 1100 },
-];
+    totalResumeDownloads: number;
+    currDownloads: number;
+    downloadsChangeStr: string;
+    downloadsChangeColor: string;
+
+    totalMessages: number;
+    unreadMessages: number;
+    newMessagesThisPeriod: number;
+  };
+  chartSeries: Array<{ day: string; visitors: number; pageViews: number }>;
+  profileStatus: {
+    completenessPct: string;
+    completedItems: number;
+    totalItems: number;
+    checklist: Array<{ key: string; label: string; ok: boolean }>;
+    openToWork: boolean;
+    resumeUpdatedDate: string;
+  };
+  recentProjects: Array<{
+    id: string;
+    title: string;
+    status: string;
+    updated_at: string;
+    live_url: string | null;
+    category: string;
+  }>;
+  recentMessages: Array<{
+    id: string;
+    name: string;
+    email: string;
+    message: string;
+    subject?: string;
+    is_read: boolean;
+    created_at: string;
+  }>;
+  activeResume: {
+    url: string;
+    fileName: string;
+    fileSize: string;
+    uploadedDate: string;
+  };
+  storageUsage: {
+    display: string;
+    percentage: string;
+  };
+}
 
 const projectColors = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"];
 
 function timeAgo(dateStr: string) {
+  if (!dateStr) return "recently";
   const now = new Date();
   const d = new Date(dateStr);
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  const diff = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 1000));
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   const days = Math.floor(diff / 86400);
-  if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+  if (days < 7) return `${days} day${days !== 1 ? "s" : ""} ago`;
   const weeks = Math.floor(days / 7);
-  return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+  return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
 }
 
 function projectStatus(status: string) {
-  if (status === "live") return "Published";
+  if (status === "live" || status === "completed") return "Published";
   if (status === "development") return "Draft";
-  return "Published"; // completed
+  return "Published";
 }
 
 /* ───────────── Sub-components ───────────── */
@@ -128,7 +158,6 @@ function StatsCard({
         (e.currentTarget as HTMLElement).style.boxShadow = "none";
       }}
     >
-      {/* Top row: label + icon */}
       <div className="flex items-start justify-between mb-3">
         <p
           style={{
@@ -151,7 +180,6 @@ function StatsCard({
           <Icon size={20} color={iconColor} />
         </div>
       </div>
-      {/* Value */}
       <p
         style={{
           fontFamily: "var(--font-outfit, sans-serif)",
@@ -165,7 +193,6 @@ function StatsCard({
       >
         {value}
       </p>
-      {/* Change row */}
       <p
         style={{
           fontFamily: "var(--font-outfit, sans-serif)",
@@ -274,7 +301,6 @@ function SectionCard({
   );
 }
 
-/* ───────────── Custom chart tooltip ───────────── */
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -299,112 +325,166 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-/* ───────────── Main page ───────────── */
+/* ───────────── Main Page Component ───────────── */
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    projects: 0,
-    visitors: 5482,
-    profileViews: 1248,
-    resumeDownloads: 0,
-    totalMessages: 0,
-    unreadMessages: 0,
-  });
-  const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
-  const [recentProjectsList, setRecentProjectsList] = useState<RecentProject[]>([]);
+  const [range, setRange] = useState<string>("7d");
+  const [data, setData] = useState<DashboardAPIData | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [error, setError] = useState<string | null>(null);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+
   const router = useRouter();
+  const supabase = createClient();
+
+  const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/dashboard?range=${range}`);
+      if (!res.ok) {
+        throw new Error(`Failed to load dashboard metrics (${res.status})`);
+      }
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setData(json);
+    } catch (err: any) {
+      console.error("Dashboard fetch error:", err);
+      setError(err.message || "Unable to load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [range]);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const [
-          { count: projectCount },
-          { count: totalMsg },
-          { count: unreadMsg },
-          { data: messages },
-          { data: projects },
-        ] = await Promise.all([
-          supabase.from("projects").select("*", { count: "exact", head: true }),
-          supabase.from("contact_messages").select("*", { count: "exact", head: true }),
-          supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
-          supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(3),
-          supabase.from("projects").select("id,title,status,updated_at,live_url,category").order("updated_at", { ascending: false }).limit(5),
-        ]);
-
-        setStats((prev) => ({
-          ...prev,
-          projects: projectCount ?? prev.projects,
-          totalMessages: totalMsg ?? prev.totalMessages,
-          unreadMessages: unreadMsg ?? prev.unreadMessages,
-        }));
-        setRecentMessages(messages ?? []);
-        setRecentProjectsList(projects ?? []);
-      } catch {
-        // Use fallback data on error
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDashboard();
-  }, [supabase]);
+
+    // Subscribe to realtime changes on contact_messages and projects
+    const channel = supabase
+      .channel("admin-dashboard-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "contact_messages" }, () => fetchDashboard())
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => fetchDashboard())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchDashboard, supabase]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center" style={{ minHeight: "60vh" }}>
+      <div className="flex flex-col items-center justify-center py-24 space-y-4" style={{ minHeight: "60vh" }}>
         <div
           className="rounded-full animate-spin"
           style={{
-            width: 32,
-            height: 32,
-            border: "2.5px solid var(--brand-pale)",
+            width: 36,
+            height: 36,
+            border: "3px solid var(--brand-pale)",
             borderTopColor: "var(--brand-primary)",
           }}
         />
+        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">Loading portfolio dashboard...</p>
       </div>
     );
   }
 
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 border border-red-200 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/10 rounded-2xl p-8 text-center my-8">
+        <AlertTriangle className="w-10 h-10 text-red-500 mb-3" />
+        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">Unable to load dashboard analytics.</h3>
+        <p className="text-xs text-red-500/80 mb-5">{error}</p>
+        <button
+          onClick={fetchDashboard}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  const { stats, chartSeries, profileStatus, recentProjects, recentMessages, activeResume, storageUsage } = data;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 1400 }}>
+      
+      {/* ── Range Selector Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div>
+          <h2 style={{ fontFamily: "var(--font-outfit, sans-serif)", fontWeight: 800, fontSize: "1.35rem", color: "var(--text-primary)" }}>
+            Overview
+          </h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: 2 }}>
+            Real-time analytics and CMS overview from production database.
+          </p>
+        </div>
+
+        {/* Date Filter Buttons */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ background: "var(--admin-card-bg)", border: "1px solid var(--admin-border)" }}>
+          {[
+            { label: "7 Days", val: "7d" },
+            { label: "30 Days", val: "30d" },
+            { label: "90 Days", val: "90d" },
+          ].map((b) => (
+            <button
+              key={b.val}
+              onClick={() => setRange(b.val)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 8,
+                background: range === b.val ? "var(--brand-primary)" : "transparent",
+                color: range === b.val ? "#FFFFFF" : "var(--text-muted)",
+                border: "none",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── 5 Stats Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           label="Total Projects"
-          value={stats.projects}
-          change="↑ 2"
-          changeLabel="this month"
-          changeColor="var(--emerald)"
+          value={stats.totalProjects}
+          change={stats.projectChangeStr}
+          changeLabel={`(${stats.publishedProjects} published)`}
+          changeColor={stats.projectChangeColor}
           icon={Code2}
           iconBg="rgba(37,99,235,0.15)"
           iconColor="#3B82F6"
         />
         <StatsCard
           label="Total Visitors"
-          value={stats.visitors.toLocaleString()}
-          change="↑ 18.7%"
-          changeLabel="this month"
-          changeColor="var(--emerald)"
+          value={stats.currVisitors.toLocaleString()}
+          change={stats.visitorChangeStr}
+          changeLabel="vs prev period"
+          changeColor={stats.visitorChangeColor}
           icon={BarChart2}
           iconBg="rgba(16,185,129,0.15)"
           iconColor="#10B981"
         />
         <StatsCard
           label="Profile Views"
-          value={stats.profileViews.toLocaleString()}
-          change="↑ 12.4%"
-          changeLabel="this month"
-          changeColor="var(--emerald)"
+          value={stats.currViews.toLocaleString()}
+          change={stats.viewsChangeStr}
+          changeLabel="vs prev period"
+          changeColor={stats.viewsChangeColor}
           icon={Eye}
           iconBg="rgba(124,58,237,0.15)"
           iconColor="#7C3AED"
         />
         <StatsCard
           label="Resume Downloads"
-          value={stats.resumeDownloads}
-          change="↑ 8.3%"
-          changeLabel="this month"
-          changeColor="var(--emerald)"
+          value={stats.currDownloads}
+          change={stats.downloadsChangeStr}
+          changeLabel=""
+          changeColor={stats.downloadsChangeColor}
           icon={Download}
           iconBg="rgba(245,158,11,0.15)"
           iconColor="#F59E0B"
@@ -413,7 +493,7 @@ export default function AdminDashboard() {
           label="Contact Messages"
           value={stats.totalMessages}
           change={`↑ ${stats.unreadMessages}`}
-          changeLabel="new messages"
+          changeLabel="unread"
           changeColor="var(--brand-primary)"
           icon={Mail}
           iconBg="rgba(239,68,68,0.15)"
@@ -427,21 +507,21 @@ export default function AdminDashboard() {
         {/* Col 1 — Recent Projects */}
         <SectionCard title="Recent Projects" action="View All" actionHref="/admin/projects">
           <div>
-            {recentProjectsList.length === 0 ? (
+            {recentProjects.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <Code2 size={28} style={{ margin: "0 auto 8px", color: "var(--text-muted)", opacity: 0.4 }} />
-                <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>No projects yet.</p>
+                <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>No projects found in database.</p>
                 <Link href="/admin/projects" style={{ fontSize: "0.8rem", color: "var(--brand-primary)", textDecoration: "none" }}>Add your first project →</Link>
               </div>
             ) : (
-              recentProjectsList.map((project, i) => {
+              recentProjects.map((project, i) => {
                 const color = projectColors[i % projectColors.length];
                 return (
                   <div
                     key={project.id}
                     className="flex items-center gap-3 px-5 py-3 transition-colors"
                     style={{
-                      borderBottom: i < recentProjectsList.length - 1 ? "1px solid var(--admin-border)" : "none",
+                      borderBottom: i < recentProjects.length - 1 ? "1px solid var(--admin-border)" : "none",
                       cursor: "default",
                     }}
                     onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--admin-hover)")}
@@ -532,45 +612,52 @@ export default function AdminDashboard() {
         {/* Col 2 — Visitors Overview chart */}
         <SectionCard title="Visitors Overview" action="View Analytics" actionHref="/admin/analytics">
           <div style={{ padding: "20px 16px 12px" }}>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={visitorData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="visitorGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(148,163,184,0.12)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  tickFormatter={(v) => v.replace("May ", "")}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => (v >= 1000 ? `${v / 1000}K` : v)}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="visitors"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  fill="url(#visitorGrad)"
-                  dot={{ fill: "#fff", stroke: "#3B82F6", strokeWidth: 2, r: 4 }}
-                  activeDot={{ fill: "#3B82F6", stroke: "#fff", strokeWidth: 2, r: 5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartSeries.length === 0 || chartSeries.every((d) => d.visitors === 0) ? (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <BarChart2 size={32} style={{ color: "var(--text-muted)", opacity: 0.3, marginBottom: 8 }} />
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No visitor data logged for this period.</p>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", opacity: 0.6, marginTop: 2 }}>Events log automatically as visitors browse.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartSeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="visitorGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(148,163,184,0.12)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--text-muted)", fontFamily: "var(--font-outfit, sans-serif)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${v / 1000}K` : v)}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="visitors"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    fill="url(#visitorGrad)"
+                    dot={{ fill: "#fff", stroke: "#3B82F6", strokeWidth: 2, r: 4 }}
+                    activeDot={{ fill: "#3B82F6", stroke: "#fff", strokeWidth: 2, r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </SectionCard>
 
@@ -657,22 +744,32 @@ export default function AdminDashboard() {
               padding: 16,
             }}
           >
-            <h3
-              style={{
-                fontFamily: "var(--font-outfit, sans-serif)",
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                color: "var(--text-primary)",
-                marginBottom: 12,
-              }}
-            >
-              Profile Status
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3
+                style={{
+                  fontFamily: "var(--font-outfit, sans-serif)",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Profile Status
+              </h3>
+              <button
+                onClick={() => setShowChecklistModal(true)}
+                title="View completeness breakdown"
+                className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 font-semibold cursor-pointer"
+              >
+                <HelpCircle size={13} />
+                Breakdown
+              </button>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { label: "Profile Complete", value: "100%" },
-                { label: "Resume Updated", value: "May 10, 2025" },
-                { label: "Open to Work", value: "Enabled", green: true },
+                { label: "Profile Complete", value: profileStatus.completenessPct },
+                { label: "Resume Updated", value: profileStatus.resumeUpdatedDate },
+                { label: "Open to Work", value: profileStatus.openToWork ? "Enabled" : "Disabled", green: profileStatus.openToWork },
                 { label: "Email Verified", value: "Verified", green: true },
               ].map(({ label, value, green }) => (
                 <div key={label} className="flex items-center justify-between">
@@ -721,77 +818,10 @@ export default function AdminDashboard() {
         {/* Col 1 — Recent Messages */}
         <SectionCard title="Recent Messages" action="View All" actionHref="/admin/contact-messages">
           {recentMessages.length === 0 ? (
-            /* Mock message to always show something */
-            <div className="px-5 py-4">
-              <div
-                className="flex items-start gap-3 p-3 rounded-xl"
-                style={{ background: "var(--admin-hover)" }}
-              >
-                <div
-                  className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-white text-sm"
-                  style={{ width: 38, height: 38, background: "#3B82F6" }}
-                >
-                  A
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        style={{
-                          fontFamily: "var(--font-outfit, sans-serif)",
-                          fontWeight: 600,
-                          fontSize: "0.875rem",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        Aman Verma
-                      </span>
-                      <span
-                        style={{
-                          background: "rgba(59,130,246,0.15)",
-                          color: "var(--brand-primary)",
-                          fontSize: "0.65rem",
-                          fontWeight: 700,
-                          padding: "2px 7px",
-                          borderRadius: 100,
-                        }}
-                      >
-                        New
-                      </span>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--text-muted)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      May 24, 2025
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-outfit, sans-serif)",
-                      fontWeight: 600,
-                      fontSize: "0.8rem",
-                      color: "var(--text-primary)",
-                      marginBottom: 2,
-                    }}
-                  >
-                    Project Collaboration
-                  </p>
-                  <p
-                    className="truncate"
-                    style={{
-                      fontFamily: "var(--font-outfit, sans-serif)",
-                      fontSize: "0.78rem",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    Hi Nilesh, I came across your portfolio and i...
-                  </p>
-                </div>
-              </div>
+            <div className="px-5 py-12 text-center text-slate-400">
+              <Mail className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No recent messages found.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Submitted contact form entries will appear here.</p>
             </div>
           ) : (
             <div>
@@ -802,7 +832,8 @@ export default function AdminDashboard() {
                 return (
                   <div
                     key={msg.id}
-                    className="flex items-start gap-3 px-5 py-3.5 transition-colors"
+                    className="flex items-start gap-3 px-5 py-3.5 transition-colors cursor-pointer"
+                    onClick={() => router.push("/admin/contact-messages")}
                     style={{
                       borderBottom: i < recentMessages.length - 1 ? "1px solid var(--admin-border)" : "none",
                     }}
@@ -862,12 +893,11 @@ export default function AdminDashboard() {
           )}
         </SectionCard>
 
-        {/* Col 2 — Resume + Storage */}
+        {/* Col 2 — Active Resume + Storage Usage */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Resume card */}
-          <SectionCard title="Resume">
+          {/* Resume Card */}
+          <SectionCard title="Active Resume">
             <div className="px-5 py-4 flex items-center gap-4">
-              {/* PDF icon */}
               <div
                 className="flex items-center justify-center rounded-xl flex-shrink-0"
                 style={{
@@ -889,36 +919,48 @@ export default function AdminDashboard() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  Nilesh_Kumar_Singh_Resume.pdf
+                  {activeResume.fileName}
                 </p>
                 <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  Uploaded on May 10, 2025 · 246 KB
+                  Uploaded on {activeResume.uploadedDate} · {activeResume.fileSize}
                 </p>
               </div>
-              <button
-                className="flex items-center gap-1.5 rounded-lg transition-all duration-200"
-                style={{
-                  padding: "7px 14px",
-                  background: "transparent",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-primary)",
-                  fontFamily: "var(--font-outfit, sans-serif)",
-                  fontWeight: 600,
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-primary)";
-                  (e.currentTarget as HTMLElement).style.color = "var(--brand-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
-                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-                }}
-              >
-                <Download size={13} /> Download
-              </button>
+              {activeResume.url ? (
+                <a
+                  href={activeResume.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg transition-all duration-200"
+                  style={{
+                    padding: "7px 14px",
+                    background: "transparent",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                    fontFamily: "var(--font-outfit, sans-serif)",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                    textDecoration: "none",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--brand-primary)";
+                    (e.currentTarget as HTMLElement).style.color = "var(--brand-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
+                    (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                  }}
+                >
+                  <Download size={13} /> Download
+                </a>
+              ) : (
+                <Link
+                  href="/admin/resume"
+                  className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+                >
+                  Upload
+                </Link>
+              )}
             </div>
           </SectionCard>
 
@@ -950,7 +992,7 @@ export default function AdminDashboard() {
                   color: "var(--text-primary)",
                 }}
               >
-                2.4 GB / 10 GB
+                {storageUsage.display}
               </span>
             </div>
             {/* Progress bar */}
@@ -959,8 +1001,8 @@ export default function AdminDashboard() {
               style={{ height: 6, background: "var(--bg-tertiary)" }}
             >
               <div
-                className="h-full rounded-full"
-                style={{ width: "24%", background: "var(--brand-primary)" }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: storageUsage.percentage, background: "var(--brand-primary)" }}
               />
             </div>
             <p
@@ -971,11 +1013,51 @@ export default function AdminDashboard() {
                 color: "var(--text-muted)",
               }}
             >
-              24% used
+              {storageUsage.percentage} used
             </p>
           </div>
         </div>
       </div>
+
+      {/* ── Checklist Breakdown Modal ── */}
+      {showChecklistModal && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-150 dark:border-slate-800 max-w-md w-full p-6 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">Profile Completeness Checklist</h3>
+              <button onClick={() => setShowChecklistModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {profileStatus.checklist.map((item) => (
+                <div key={item.key} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
+                  {item.ok ? (
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                      Incomplete
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setShowChecklistModal(false)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
