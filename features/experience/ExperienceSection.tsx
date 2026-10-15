@@ -5,12 +5,7 @@ import { motion, type Variants, AnimatePresence } from "framer-motion";
 import { experiences as staticExperiences } from "@/data/experience";
 import type { Experience } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Briefcase,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Briefcase } from "lucide-react";
 
 // ── Animation variants ────────────────────────────────────────────────────
 
@@ -36,6 +31,13 @@ const headerVariants: Variants = {
     transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
   },
 };
+
+// ── Constants ─────────────────────────────────────────────────────────────
+
+/** Max responsibilities shown before "View more" toggle */
+const MAX_RESP = 4;
+/** Max highlights shown — keeps right column from overwhelming left */
+const MAX_HIGHLIGHTS = 4;
 
 // ── Company Logo with initials fallback ──────────────────────────────────
 
@@ -88,7 +90,11 @@ function CompanyLogo({
 
 function TypeBadge({ type }: { type: Experience["type"] }) {
   const label =
-    type === "full-time" ? "Full-Time" : type === "freelance" ? "Freelance" : "Contract";
+    type === "full-time"
+      ? "Full-Time"
+      : type === "freelance"
+      ? "Freelance"
+      : "Contract";
 
   return (
     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap">
@@ -102,8 +108,7 @@ function TypeBadge({ type }: { type: Experience["type"] }) {
 export function ExperienceCardSkeleton() {
   return (
     <div className="rounded-2xl border border-border-base bg-card p-6 md:p-8 animate-pulse">
-      {/* Header skeleton */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-7">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
           <div className="space-y-2.5">
@@ -111,13 +116,13 @@ export function ExperienceCardSkeleton() {
             <div className="h-4 w-32 rounded bg-muted" />
           </div>
         </div>
-        <div className="flex flex-col md:items-end gap-2">
+        <div className="flex flex-col sm:items-end gap-2">
           <div className="h-6 w-20 rounded-full bg-muted" />
           <div className="h-4 w-36 rounded bg-muted" />
         </div>
       </div>
-      {/* Body skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8">
+      {/* Body skeleton — items-start so skeleton matches real card */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 items-start">
         <div className="space-y-3">
           <div className="h-3 w-28 rounded bg-muted" />
           <div className="space-y-2.5">
@@ -132,7 +137,7 @@ export function ExperienceCardSkeleton() {
         <div className="space-y-3">
           <div className="h-3 w-28 rounded bg-muted" />
           <div className="grid grid-cols-2 gap-2">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-9 rounded-xl bg-muted" />
             ))}
           </div>
@@ -145,13 +150,18 @@ export function ExperienceCardSkeleton() {
 // ── Individual experience card ────────────────────────────────────────────
 
 function ExperienceCard({ exp }: { exp: Experience }) {
-  const [expanded, setExpanded] = useState(false);
+  const [respExpanded, setRespExpanded] = useState(false);
 
-  const displayedResponsibilities = expanded
+  // ── ROOT FIX 2: Cap responsibilities at MAX_RESP by default
+  const displayedResp = respExpanded
     ? exp.responsibilities
-    : exp.responsibilities.slice(0, 4);
+    : exp.responsibilities.slice(0, MAX_RESP);
+  const hasMoreResp = exp.responsibilities.length > MAX_RESP;
 
-  const hasMore = exp.responsibilities.length > 4;
+  // ── ROOT FIX 3: Cap highlights at MAX_HIGHLIGHTS — prevents right column
+  //    from growing taller than the left and creating blank space.
+  const highlights = (exp.highlights ?? []).slice(0, MAX_HIGHLIGHTS);
+  const hasHighlights = highlights.length > 0;
 
   return (
     <motion.article
@@ -164,8 +174,8 @@ function ExperienceCard({ exp }: { exp: Experience }) {
       aria-label={`${exp.role} at ${exp.company}`}
     >
       <div className="p-6 md:p-8">
-        {/* ── Card header ──────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
+        {/* ── Card header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           {/* Left: logo + title + company + domain */}
           <div className="flex items-start gap-4 min-w-0">
             <CompanyLogo company={exp.company} logoUrl={exp.companyLogoUrl} />
@@ -195,7 +205,7 @@ function ExperienceCard({ exp }: { exp: Experience }) {
           </div>
 
           {/* Right: badge + dates */}
-          <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 sm:gap-2 shrink-0">
+          <div className="flex flex-row sm:flex-col sm:items-end items-center gap-2 shrink-0">
             <TypeBadge type={exp.type} />
             <span className="text-xs text-foreground-faint font-mono font-medium whitespace-nowrap">
               <time dateTime={exp.startDate}>{exp.startDate}</time>
@@ -205,28 +215,40 @@ function ExperienceCard({ exp }: { exp: Experience }) {
           </div>
         </div>
 
-        {/* ── Divider ──────────────────────────────────────────────────── */}
-        <div className="h-px bg-border-base mb-7" />
+        {/* ── Divider ─────────────────────────────────────────────────── */}
+        <div className="h-px bg-border-base mb-6" />
 
-        {/* ── Card body — two column ───────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8">
+        {/* ── Card body ───────────────────────────────────────────────── */}
+        {/*
+          ROOT FIX 1: `items-start` on the grid.
+          Without it, CSS Grid stretches both children to the same row height,
+          which creates a blank area below the shorter column.
+          `items-start` lets each column be only as tall as its content.
+        */}
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-6",
+            hasHighlights && "lg:grid-cols-[3fr_2fr] lg:gap-8"
+          )}
+          style={{ alignItems: "start" }} // belt-and-suspenders alongside Tailwind
+        >
           {/* Left: Key Responsibilities */}
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-4">
+          <div className="self-start">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-3">
               Key Responsibilities
             </h4>
             <ul
-              className="space-y-3"
+              className="space-y-2.5"
               aria-label={`Responsibilities as ${exp.role}`}
             >
               <AnimatePresence initial={false}>
-                {displayedResponsibilities.map((resp, i) => (
+                {displayedResp.map((resp, i) => (
                   <motion.li
                     key={i}
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.22 }}
                     className="flex items-start gap-3"
                   >
                     <div className="mt-0.5 shrink-0 p-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 transition-colors group-hover:bg-blue-500/10 group-hover:border-blue-400/30">
@@ -244,24 +266,22 @@ function ExperienceCard({ exp }: { exp: Experience }) {
               </AnimatePresence>
             </ul>
 
-            {/* View details toggle */}
-            {hasMore && (
+            {/* Expand / collapse for extra responsibilities */}
+            {hasMoreResp && (
               <button
-                onClick={() => setExpanded(!expanded)}
-                aria-expanded={expanded}
+                onClick={() => setRespExpanded(!respExpanded)}
+                aria-expanded={respExpanded}
                 className={cn(
-                  "mt-4 inline-flex items-center gap-1.5 text-xs font-semibold",
+                  "mt-3 inline-flex items-center gap-1.5 text-xs font-semibold",
                   "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300",
                   "transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 rounded"
                 )}
               >
-                {expanded ? (
-                  <>
-                    Show less <ChevronUp className="w-3.5 h-3.5" />
-                  </>
+                {respExpanded ? (
+                  <>Show less <ChevronUp className="w-3.5 h-3.5" /></>
                 ) : (
                   <>
-                    View {exp.responsibilities.length - 4} more{" "}
+                    +{exp.responsibilities.length - MAX_RESP} more{" "}
                     <ChevronDown className="w-3.5 h-3.5" />
                   </>
                 )}
@@ -269,24 +289,28 @@ function ExperienceCard({ exp }: { exp: Experience }) {
             )}
           </div>
 
-          {/* Right: Key Contributions */}
-          {exp.highlights && exp.highlights.length > 0 && (
-            <div>
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-4">
+          {/* Right: Key Contributions — only rendered when highlights exist */}
+          {hasHighlights && (
+            <div className="self-start">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground-faint mb-3">
                 Key Contributions
               </h4>
-              <div className="flex flex-col gap-2.5">
-                {exp.highlights.map((label, i) => (
+              {/*
+                Two-column grid for highlights on the right.
+                Keeps each item compact; max 4 items = 2×2 grid, perfectly balanced.
+              */}
+              <div className="grid grid-cols-2 gap-2">
+                {highlights.map((label, i) => (
                   <div
                     key={i}
                     className={cn(
-                      "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl",
+                      "flex items-center gap-2 px-3 py-2.5 rounded-xl",
                       "bg-muted border border-border-base",
                       "group-hover:border-blue-500/20 transition-colors"
                     )}
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                    <span className="text-sm font-medium text-foreground leading-snug">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 flex-none" />
+                    <span className="text-xs font-medium text-foreground leading-snug">
                       {label}
                     </span>
                   </div>
@@ -299,7 +323,7 @@ function ExperienceCard({ exp }: { exp: Experience }) {
         {/* ── Technology tags footer ───────────────────────────────────── */}
         {exp.technologyTags && exp.technologyTags.length > 0 && (
           <>
-            <div className="h-px bg-border-base mt-7 mb-5" />
+            <div className="h-px bg-border-base mt-6 mb-4" />
             <div className="flex flex-wrap gap-2" aria-label="Tools and domains">
               {exp.technologyTags.map((tag, i) => (
                 <span
@@ -345,7 +369,7 @@ export function ExperienceSection({
           viewport={{ once: true, margin: "-80px" }}
           variants={containerVariants}
         >
-          {/* ── Section header ─────────────────────────────────────────── */}
+          {/* ── Section header ───────────────────────────────────────── */}
           <motion.div variants={headerVariants} className="mb-14">
             <div className="flex items-center gap-2.5 mb-4">
               <span
@@ -371,7 +395,7 @@ export function ExperienceSection({
             </p>
           </motion.div>
 
-          {/* ── Cards ──────────────────────────────────────────────────── */}
+          {/* ── Cards ────────────────────────────────────────────────── */}
           <div className="space-y-5">
             {visible.map((exp) => (
               <ExperienceCard key={exp.id} exp={exp} />
